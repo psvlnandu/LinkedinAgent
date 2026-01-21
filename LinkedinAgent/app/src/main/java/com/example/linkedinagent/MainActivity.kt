@@ -61,9 +61,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             text = if (hasAccess) "Agent is Active" else "Access Required",
             style = MaterialTheme.typography.headlineMedium
         )
-
         Spacer(modifier = Modifier.height(20.dp))
-
         Button(onClick = {
             if (!hasAccess) {
                 // 2. Open the system settings page
