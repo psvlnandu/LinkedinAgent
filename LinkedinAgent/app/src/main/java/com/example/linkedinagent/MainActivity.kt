@@ -63,6 +63,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PermissionScreen(context: Context = LocalContext.current) {
+    // state to track
+    var signedInAccount by remember { mutableStateOf<com.google.android.gms.auth.api.signin.GoogleSignInAccount?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
