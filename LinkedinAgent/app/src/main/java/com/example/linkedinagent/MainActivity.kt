@@ -121,13 +121,13 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                 Text("Sign in with Google")
             }
         }else{
-            Text("Signed in as: ${signedInAccount?.email}", fontSize = 14.sp)
+            Text("Signed in as: ${signedInAccount?.email}")
             // Optional: Add a Sign Out button
             Button(onClick = {
                 GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
                 signedInAccount = null
             }) {
-                Text("Sign Out", fontSize = 10.sp)
+                Text("Sign Out")
             }
         }
 
