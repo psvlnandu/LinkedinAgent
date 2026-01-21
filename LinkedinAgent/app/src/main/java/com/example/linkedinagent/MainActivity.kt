@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,12 +53,19 @@ fun PermissionScreen(context: Context = LocalContext.current) {
     }
 
     var hasAccess by remember { mutableStateOf(isPermissionGranted()) }
-
+    var tempLogs by remember { mutableStateOf(listOf<String>()) }
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        LazyColumn() {
+            items(tempLogs){ current->
+                Text(text = current, fontSize = 12.sp)
+
+            }
+        }
+
         Text(
             text = if (hasAccess) "Agent is Active" else "Access Required",
 

@@ -13,7 +13,8 @@ class LinkedInListenerService : NotificationListenerService() {
             val extras = sbn.notification.extras
             val title = extras.getString("android.title") // Usually the Person's Name
             val text = extras.getString("android.text")   // Usually "accepted your invitation"
-            println("title:$title\ttext:$text")
+            var tempLog = "title:$title\ttext:$text"
+            println(tempLog)
             if (text?.contains("accepted your invitation", ignoreCase = true) == true) {
                 val candidateName = title ?: "Someone"
 
