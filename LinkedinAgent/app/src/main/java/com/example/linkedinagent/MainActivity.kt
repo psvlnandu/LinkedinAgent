@@ -71,11 +71,21 @@ fun PermissionScreen(context: Context = LocalContext.current) {
     ) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
-            val account = task.getResult(ApiException::class.java)
+            signedInAccount = task.getResult(ApiException::class.java)
+
             // SUCCESS: You have the account here
-            println("Signed in as: ${account?.email}")
+            println("Signed in as: ${signedInAccount?.email}")
         } catch (e: ApiException) {
             println("Signin failed ; $e")
+        }
+    }
+    // 2. AUTO-SIGNIN LOGIC: Runs once when the screen opens
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        val lastAccount = GoogleSignIn.getLastSignedInAccount(context)
+        if (lastAccount != null) {
+            // User was previously signed in!
+            signedInAccount = lastAccount
+            println("Auto-signed in as: ${lastAccount.email}")
         }
     }
 
@@ -106,8 +116,19 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         verticalArrangement = Arrangement.Center
     ) {
 
-        Button(onClick = { launchGoogleSignIn() }) {
-            Text("Sign in with Google")
+        if (signedInAccount == null) {
+            Button(onClick = { launchGoogleSignIn() }) {
+                Text("Sign in with Google")
+            }
+        }else{
+            Text("Signed in as: ${signedInAccount?.email}", fontSize = 14.sp)
+            // Optional: Add a Sign Out button
+            Button(onClick = {
+                GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
+                signedInAccount = null
+            }) {
+                Text("Sign Out", fontSize = 10.sp)
+            }
         }
 
         Text(text = if (hasAccess) "Agent is Active" else "Access Required",)
