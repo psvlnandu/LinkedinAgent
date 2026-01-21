@@ -1,16 +1,33 @@
 package com.example.linkedinagent
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
 import com.example.linkedinagent.ui.theme.LinkedinAgentTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,13 +36,42 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LinkedinAgentTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Arjun",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                PermissionScreen()
             }
+        }
+    }
+}
+
+@Composable
+fun PermissionScreen(context: Context = LocalContext.current) {
+    // 1. Logic to check if permission is already granted
+    fun isPermissionGranted(): Boolean {
+        val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
+        return enabledPackages.contains(context.packageName)
+    }
+
+    var hasAccess by remember { mutableStateOf(isPermissionGranted()) }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = if (hasAccess) "Agent is Active" else "Access Required",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Button(onClick = {
+            if (!hasAccess) {
+                // 2. Open the system settings page
+                val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                context.startActivity(intent)
+            }
+        }) {
+            Text(if (hasAccess) "Permission Granted" else "Grant Notification Access")
         }
     }
 }
