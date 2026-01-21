@@ -55,22 +55,36 @@ class LinkedInListenerService : NotificationListenerService() {
         }
         else if (packageName=="com.google.android.gm"){
             val extras = sbn.notification.extras
-            val subject = extras.getString("android.title") // Email Subject
+            println("--- GMAIL NOTIFICATION START ---")
+            for (key in extras.keySet()) {
+                val value = extras.get(key)
+                println("Key: $key | Value: $value")
+            }
+            println("--- GMAIL NOTIFICATION END ---")
 
-            val sender = extras.getString("android.text")   // Usually the Sender/Snippet
-            // Filter for LinkedIn specific emails if they arrive via Gmail app
-            println("notification received; Sender: $sender, subject: $subject")
-            if (subject?.contains("LinkedInPoorna", ignoreCase = true) == true) {
+            // 2. Fetch the standard fields
+            val title = extras.getString("android.title")       // Subject or Sender
+            val text = extras.getCharSequence("android.text")?.toString()    // Snippet or Sender
+            val bigText = extras.getCharSequence("android.bigText")?.toString() // Extended content
+            val subText = extras.getCharSequence("android.subText")?.toString() // Often the Account Email
 
+            // 3. Search for your keyword in ALL likely fields
+            val searchKeyword = "Poorna"
+            val matchFound = (title?.contains(searchKeyword, true) == true) ||
+                    (text?.contains(searchKeyword, true) == true) ||
+                    (bigText?.contains(searchKeyword, true) == true)
+
+            if (matchFound) {
+                println("MATCH FOUND! Subject: $title | Snippet: $text")
                 scope.launch {
                     withContext(Dispatchers.Main) {
-                        AgentState.emailLogs.add(0, "Gmail Alert: $subject from $sender")
+                        AgentState.emailLogs.add(0, "Gmail Alert: $title")
                     }
                 }
-            } else {
-                // Log general Gmail for debugging
-                println("Gmail received: $subject")
             }
+
+
+
         }
 
     }
