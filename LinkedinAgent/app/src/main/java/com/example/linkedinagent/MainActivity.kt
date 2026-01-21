@@ -59,7 +59,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        LazyColumn() {
+        LazyColumn {
             items(tempLogs){ current->
                 Text(text = current, fontSize = 12.sp)
 
