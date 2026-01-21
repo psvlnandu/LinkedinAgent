@@ -5,8 +5,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -31,8 +34,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import com.example.linkedinagent.ui.theme.LinkedinAgentTheme
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.Scope
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.gson.GsonFactory
+import com.google.api.services.gmail.Gmail
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,10 +57,38 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+
 }
+
 
 @Composable
 fun PermissionScreen(context: Context = LocalContext.current) {
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            // SUCCESS: You have the account here
+            println("Signed in as: ${account?.email}")
+        } catch (e: ApiException) {
+            println("Signin failed ; $e")
+        }
+    }
+
+    fun launchGoogleSignIn() {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestEmail()
+            // Scope for Gmail readonly access
+            .requestScopes(Scope("https://www.googleapis.com/auth/gmail.readonly"))
+            .build()
+
+        val client = GoogleSignIn.getClient(context, gso)
+        launcher.launch(client.signInIntent)
+    }
+
     // 1. Logic to check if permission is already granted
     fun isPermissionGranted(): Boolean {
         val enabledPackages = NotificationManagerCompat.getEnabledListenerPackages(context)
@@ -53,23 +96,20 @@ fun PermissionScreen(context: Context = LocalContext.current) {
     }
 
     var hasAccess by remember { mutableStateOf(isPermissionGranted()) }
-    var tempLogs by remember { mutableStateOf(listOf<String>()) }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        LazyColumn {
-            items(tempLogs){ current->
-                Text(text = current, fontSize = 12.sp)
 
-            }
+        Button(onClick = { launchGoogleSignIn() }) {
+            Text("Sign in with Google")
         }
 
-        Text(
-            text = if (hasAccess) "Agent is Active" else "Access Required",
-
-        )
+        Text(text = if (hasAccess) "Agent is Active" else "Access Required",)
         Spacer(modifier = Modifier.height(10.dp))
         Button(onClick = {
             if (!hasAccess) {
@@ -82,7 +122,22 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         }
     }
 }
+/*
+Gmail Service Helper:
+added a getGmailService helper function at the bottom. Once the user signs in successfully,
+you can call this to start searching for those LinkedIn emails.
+ */
+suspend fun getGmailService(context: Context, accountEmail: String): Gmail = withContext(Dispatchers.IO) {
+    val credential = GoogleAccountCredential.usingOAuth2(
+        context, listOf("https://www.googleapis.com/auth/gmail.readonly")
+    ).setSelectedAccountName(accountEmail)
 
+    Gmail.Builder(
+        NetHttpTransport(),
+        GsonFactory.getDefaultInstance(),
+        credential
+    ).setApplicationName("LinkedinAgent").build()
+}
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
