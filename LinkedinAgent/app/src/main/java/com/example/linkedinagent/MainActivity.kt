@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.app.NotificationManagerCompat
 import com.example.linkedinagent.ui.theme.LinkedinAgentTheme
 
@@ -58,9 +59,9 @@ fun PermissionScreen(context: Context = LocalContext.current) {
     ) {
         Text(
             text = if (hasAccess) "Agent is Active" else "Access Required",
-            style = MaterialTheme.typography.headlineMedium
+
         )
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(10.dp))
         Button(onClick = {
             if (!hasAccess) {
                 // 2. Open the system settings page
