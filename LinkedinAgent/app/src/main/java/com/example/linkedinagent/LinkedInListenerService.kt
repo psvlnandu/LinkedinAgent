@@ -53,6 +53,25 @@ class LinkedInListenerService : NotificationListenerService() {
             val message = extras.getCharSequence("android.text")?.toString() // The actual message content
             println("notification received; Sender: $sender, message: $message")
         }
+        else if (packageName=="com.google.android.gm"){
+            val extras = sbn.notification.extras
+            val subject = extras.getString("android.title") // Email Subject
+
+            val sender = extras.getString("android.text")   // Usually the Sender/Snippet
+            // Filter for LinkedIn specific emails if they arrive via Gmail app
+            println("notification received; Sender: $sender, subject: $subject")
+            if (subject?.contains("LinkedInPoorna", ignoreCase = true) == true) {
+
+                scope.launch {
+                    withContext(Dispatchers.Main) {
+                        AgentState.emailLogs.add(0, "Gmail Alert: $subject from $sender")
+                    }
+                }
+            } else {
+                // Log general Gmail for debugging
+                println("Gmail received: $subject")
+            }
+        }
 
     }
 }
