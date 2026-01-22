@@ -20,20 +20,23 @@ class LinkedInListenerService : NotificationListenerService() {
         // We only care about LinkedIn
         if (packageName == "com.linkedin.android") {
 
-            val nameToSearch = when {
-                text.contains("accepted your invitation", true) -> {
-                    text.split(" accepted")[0]
-                }
-                title.contains(":") -> {
-                    title.split(":").last().trim()
-                }
-                else -> null
-            }
+//            var nameToSearch = when {
+//                text.contains("accepted your invitation", true) -> {
+//                    text.split(" accepted")[0]
+//                }
+//                title.contains(":") -> {
+//                    title.split(":").last().trim()
+//                }
+//                else -> null
+//            }
+//
+           val nameToSearch="Aswin"
 
-            if (nameToSearch != null) {
-                println("nameToSearch:$nameToSearch ")
+            println("nameToSearch:$nameToSearch ")
+            if(nameToSearch!=null) {
                 triggerGmailSearch(nameToSearch)
             }
+
 
 
         }
