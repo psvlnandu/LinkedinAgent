@@ -31,8 +31,6 @@ class LinkedInListenerService : NotificationListenerService() {
 //            }
 //
            val nameToSearch="Aswin"
-
-            println("nameToSearch:$nameToSearch ")
             if(nameToSearch!=null) {
                 triggerGmailSearch(nameToSearch)
             }
@@ -41,10 +39,12 @@ class LinkedInListenerService : NotificationListenerService() {
 
         }
         else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
-            val extras = sbn.notification.extras
-            val sender = extras.getString("android.title") // Name of the person or group
-            val message = extras.getCharSequence("android.text")?.toString() // The actual message content
+            val nameToSearch="Arun "
 
+            println("nameToSearch:$nameToSearch ")
+            if(nameToSearch!=null) {
+                triggerGmailSearch(nameToSearch)
+            }
         }
         /*
         else if (packageName=="com.google.android.gm"){
@@ -99,6 +99,7 @@ class LinkedInListenerService : NotificationListenerService() {
                     // 3. Search specifically for this person in the Socials/Invitations
                     // We pass the personName to the search function
                     val resultSnippet = fetchLinkedInAcceptanceEmail(gmailService, personName)
+                    println("resultSnippet:$resultSnippet")
 
                     if (resultSnippet != null) {
                         withContext(Dispatchers.Main) {
