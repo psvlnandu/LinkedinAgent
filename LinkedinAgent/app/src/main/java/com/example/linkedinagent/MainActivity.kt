@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
-import androidx.compose.animation.core.copy
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -213,10 +212,15 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
         ).setApplicationName("LinkedinAgent").build()
     }
 
-suspend fun fetchLinkedInAcceptanceEmail(service: Gmail): String? = withContext(Dispatchers.IO) {
+suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): String? = withContext(Dispatchers.IO) {
     try {
-        // Query: Find emails from LinkedIn with "accepted your invitation" in the last 1 day
-        val query = "from:linkedin.com \"accepted your invitation\" newer_than:1d"
+        // Updated Query:
+        // 1. from:invitations@linkedin.com -> precise sender
+        // 2. "accepted your invitation" -> the key phrase
+        // 3. category:social -> targets the correct Gmail tab
+        // 4. $personName -> looks for the name specifically
+
+        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:1d"
 
         val response = service.users().messages().list("me")
             .setQ(query)

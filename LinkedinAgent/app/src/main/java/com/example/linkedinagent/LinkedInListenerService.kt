@@ -14,45 +14,36 @@ class LinkedInListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val packageName = sbn.packageName
-
+        val extras = sbn.notification.extras
+        val title = extras.getString("android.title") ?: ""
+        val text = extras.getString("android.text") ?: ""
         // We only care about LinkedIn
         if (packageName == "com.linkedin.android") {
-            val extras = sbn.notification.extras
-            val title = extras.getString("android.title") // Usually the Person's Name
-            val text = extras.getString("android.text")   // Usually "accepted your invitation"
-            var tempLog = "title:$title\ttext:$text"
-            println(tempLog)
-            if (text?.contains("accepted your invitation", ignoreCase = true) == true) {
-                val candidateName = title ?: "Someone"
 
-                // NEXT STEP: Trigger your Gmail API search here
-                println("LinkedIn Alert: $candidateName just accepted!")
-                scope.launch {
-                    val context = applicationContext
-                    // Get the saved email from Sign-In
-                    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                    val accountEmail = prefs.getString("user_email", null)
-
-                    if (accountEmail != null) {
-                        val gmailService = getGmailService(context, accountEmail)
-                        val emailSnippet = fetchLinkedInAcceptanceEmail(gmailService)
-
-                        if (emailSnippet != null) {
-                            // Update the UI list globally
-                            withContext(Dispatchers.Main) {
-                                AgentState.emailLogs.add(0, "Email Found: $emailSnippet")
-                            }
-                        }
-                    }
+            val nameToSearch = when {
+                text.contains("accepted your invitation", true) -> {
+                    text.split(" accepted")[0]
                 }
+                title.contains(":") -> {
+                    title.split(":").last().trim()
+                }
+                else -> null
             }
+
+            if (nameToSearch != null) {
+                println("nameToSearch:$nameToSearch ")
+                triggerGmailSearch(nameToSearch)
+            }
+
+
         }
         else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
             val extras = sbn.notification.extras
             val sender = extras.getString("android.title") // Name of the person or group
             val message = extras.getCharSequence("android.text")?.toString() // The actual message content
-            println("notification received; Sender: $sender, message: $message")
+
         }
+        /*
         else if (packageName=="com.google.android.gm"){
             val extras = sbn.notification.extras
             println("--- GMAIL NOTIFICATION START ---")
@@ -86,6 +77,40 @@ class LinkedInListenerService : NotificationListenerService() {
 
 
         }
+        */
 
+    }
+    private fun triggerGmailSearch(personName: String) {
+        scope.launch {
+            val context = applicationContext
+
+            // 1. Get the saved email address from SharedPreferences
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val accountEmail = prefs.getString("user_email", null)
+
+            if (accountEmail != null) {
+                try {
+                    // 2. Initialize Gmail Service
+                    val gmailService = getGmailService(context, accountEmail)
+
+                    // 3. Search specifically for this person in the Socials/Invitations
+                    // We pass the personName to the search function
+                    val resultSnippet = fetchLinkedInAcceptanceEmail(gmailService, personName)
+
+                    if (resultSnippet != null) {
+                        withContext(Dispatchers.Main) {
+                            // Update the global state so the LazyColumn refreshes
+                            AgentState.emailLogs.add(0, "LinkedIn Match: $resultSnippet")
+                        }
+                    } else {
+                        println("Gmail Search: No matching email found for $personName yet.")
+                    }
+                } catch (e: Exception) {
+                    println("Gmail Search Error: ${e.message}")
+                }
+            } else {
+                println("Gmail Search: No account email found in prefs. User must sign in first.")
+            }
+        }
     }
 }
