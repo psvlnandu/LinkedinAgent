@@ -6,7 +6,8 @@ import androidx.compose.runtime.mutableStateListOf
 data class AgentLog(
     val message: String,
     val notificationTime: String,
-    val emailTime: String
+    val emailTime: String,
+    var isCompleted: Boolean = false
 )
 
 data class LinkedInContact(val name: String, val headline: String)
