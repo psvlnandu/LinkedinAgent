@@ -18,8 +18,8 @@ private const val NOTION_TOKEN = BuildConfig.NOTION_TOKEN
 private const val DATABASE_ID = BuildConfig.DATABASE_ID
 
 
-private const val INTEGRATION="LinkedinAgent"
-    // https://www.notion.so/2e0d5d2c2bc8804e8249dce812e4d837?v=2e0d5d2c2bc8807881cb000cbe3f5b28
+private const val INTEGRATION = "LinkedinAgent"
+// https://www.notion.so/2e0d5d2c2bc8804e8249dce812e4d837?v=2e0d5d2c2bc8807881cb000cbe3f5b28
 
 class LinkedInListenerService : NotificationListenerService() {
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -36,60 +36,26 @@ class LinkedInListenerService : NotificationListenerService() {
                 text.contains("accepted your invitation", true) -> {
                     text.split(" accepted")[0]
                 }
+
                 title.contains(":") -> {
                     title.split(":").last().trim()
                 }
+
                 else -> title.trim()
 
             }
-            if(nameToSearch.isNotEmpty()) {
+            if (nameToSearch.isNotEmpty()) {
                 triggerGmailSearch(nameToSearch)
             }
 
 
-
-        }
-        else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
-           // later
+        } else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
+            // later
             triggerGmailSearch("kelda ")
         }
-        /*
-        else if (packageName=="com.google.android.gm"){
-            val extras = sbn.notification.extras
-            println("--- GMAIL NOTIFICATION START ---")
-            for (key in extras.keySet()) {
-                val value = extras.get(key)
-                println("Key: $key | Value: $value")
-            }
-            println("--- GMAIL NOTIFICATION END ---")
-
-            // 2. Fetch the standard fields
-            val title = extras.getString("android.title")       // Subject or Sender
-            val text = extras.getCharSequence("android.text")?.toString()    // Snippet or Sender
-            val bigText = extras.getCharSequence("android.bigText")?.toString() // Extended content
-            val subText = extras.getCharSequence("android.subText")?.toString() // Often the Account Email
-
-            // 3. Search for your keyword in ALL likely fields
-            val searchKeyword = "Poorna"
-            val matchFound = (title?.contains(searchKeyword, true) == true) ||
-                    (text?.contains(searchKeyword, true) == true) ||
-                    (bigText?.contains(searchKeyword, true) == true)
-
-            if (matchFound) {
-                println("MATCH FOUND! Subject: $title | Snippet: $text")
-                scope.launch {
-                    withContext(Dispatchers.Main) {
-                        AgentState.emailLogs.add(0, "Gmail Alert: $title")
-                    }
-                }
-            }
-
-
-
-        }
-        */
 
     }
+
     private fun triggerGmailSearch(personName: String) {
         // 1. Capture Notification Time immediately
         val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
@@ -127,7 +93,7 @@ class LinkedInListenerService : NotificationListenerService() {
                                         notificationTime = notifTime,
                                         emailTime = emailTime ?: "Unknown",
                                         isCompleted = false,
-                                        messageId = mId?:""
+                                        messageId = mId ?: ""
                                     )
                                 )
                             }
@@ -140,7 +106,7 @@ class LinkedInListenerService : NotificationListenerService() {
                             searchDatabaseForCompany(headline, mId)
                         } else {
                             // If no parentheses, try searching with the whole text
-                            searchDatabaseForCompany(parsedText,mId)
+                            searchDatabaseForCompany(parsedText, mId)
                         }
                     } else {
                         println("Gmail Search: No matching email found for $personName yet.")
@@ -159,7 +125,6 @@ class LinkedInListenerService : NotificationListenerService() {
         val client = OkHttpClient()
 
 
-
         // Notion Filter JSON: Search for a property named "Company" (adjust to your column name)
         val keywords = headline.split(",", "|", "@", " at ").map { it.trim() }
 
@@ -167,9 +132,11 @@ class LinkedInListenerService : NotificationListenerService() {
             {
                 "filter": {
                     "or": [
-                        ${keywords.joinToString(",") { keyword ->
-                        """{ "property": "Company", "title": { "contains": "$keyword" } }"""
-                    }}
+                        ${
+            keywords.joinToString(",") { keyword ->
+                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+            }
+        }
                     ]
                 }
             }
@@ -192,7 +159,8 @@ class LinkedInListenerService : NotificationListenerService() {
                     println("jsonResponse:$jsonResponse")
                     withContext(Dispatchers.Main) {
                         // Capture current time for the log
-                        val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+                        val sdf =
+                            java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
                         val currentTime = sdf.format(java.util.Date())
 
                         if (results != null && results.length() > 0) {
@@ -202,27 +170,32 @@ class LinkedInListenerService : NotificationListenerService() {
                             val titleArray = companyProperty.getJSONArray("title")
 
                             val actualNotionName = if (titleArray.length() > 0) {
-                                titleArray.getJSONObject(0).getJSONObject("text").getString("content")
-                            }else{
+                                titleArray.getJSONObject(0).getJSONObject("text")
+                                    .getString("content")
+                            } else {
                                 //nothing
                             }
 
                             // We create an AgentLog object instead of just a string
-                            AgentState.emailLogs.add(0, AgentLog(
-                                message = "MATCH: Found $actualNotionName in Job Tracker!",
-                                notificationTime = currentTime,
-                                emailTime = "DB Sync",
-                                messageId = mId?:"",
-                                isCompleted = false,
-                            ))
+                            AgentState.emailLogs.add(
+                                0, AgentLog(
+                                    message = "MATCH: Found $actualNotionName in Job Tracker!",
+                                    notificationTime = currentTime,
+                                    emailTime = "DB Sync",
+                                    messageId = mId ?: "",
+                                    isCompleted = false,
+                                )
+                            )
                         } else {
-                            AgentState.emailLogs.add(0, AgentLog(
-                                message = "❌ No record for $headline in Notion.",
-                                notificationTime = currentTime,
-                                emailTime = "DB Sync",
-                                messageId = mId?:"",
-                                isCompleted = false
-                            ))
+                            AgentState.emailLogs.add(
+                                0, AgentLog(
+                                    message = "❌ No record for $headline in Notion.",
+                                    notificationTime = currentTime,
+                                    emailTime = "DB Sync",
+                                    messageId = mId ?: "",
+                                    isCompleted = false
+                                )
+                            )
                         }
                     }
                 }
@@ -232,13 +205,15 @@ class LinkedInListenerService : NotificationListenerService() {
                     val currentTime = sdf.format(java.util.Date())
 
                     // Fix: Pass an AgentLog object instead of a String
-                    AgentState.emailLogs.add(0, AgentLog(
-                        message = "Notion Error: ${e.message}",
-                        notificationTime = currentTime,
-                        emailTime = "Error",
-                        messageId = mId?:"",
-                        isCompleted = false
-                    ))
+                    AgentState.emailLogs.add(
+                        0, AgentLog(
+                            message = "Notion Error: ${e.message}",
+                            notificationTime = currentTime,
+                            emailTime = "Error",
+                            messageId = mId ?: "",
+                            isCompleted = false
+                        )
+                    )
                 }
             }
         }
