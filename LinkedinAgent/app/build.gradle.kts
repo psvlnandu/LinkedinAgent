@@ -1,8 +1,16 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin") version "2.0.1"
 }
 
+
+// Add this line at the <caret> position to configure the plugin
+secrets {
+    propertiesFileName = "local.properties"
+    // This tells the plugin to ignore the default "google_maps_api_key" search
+    ignoreList.add("sdk.*")
+}
 android {
     namespace = "com.example.linkedinagent"
     compileSdk = 36
@@ -31,6 +39,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {kotlinCompilerExtensionVersion = "1.5.1" // Match this to your Compose/Kotlin version
@@ -68,5 +77,5 @@ dependencies {
     implementation(libs.google.api.client.android)
     implementation(libs.google.api.client.gson)
     implementation(libs.google.api.services.gmail)
-
+    implementation(libs.okhttp)
 }

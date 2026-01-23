@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,7 +26,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,11 +67,6 @@ class MainActivity : ComponentActivity() {
 
 }
 
-// Global object to hold your logs
-object AgentState {
-    // This list will automatically update your LazyColumn when items are added
-    val emailLogs = mutableStateListOf<String>()
-}
 
 
 @Composable
@@ -168,23 +161,24 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // This list updates automatically when the Service finds an email!
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .background(Color.LightGray.copy(alpha = 0.2f))
-        ) {
+        LazyColumn(modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()) {
             items(AgentState.emailLogs) { log ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(4.dp),
-                ) {
-                    Text(
-                        text = log,
-                        modifier = Modifier.padding(8.dp),
-                        fontSize = 12.sp
-                    )
+                Card(Modifier
+                    .padding(4.dp)
+                    .fillMaxWidth()) {
+                    Column(Modifier.padding(8.dp)) {
+                        Text(text = log.message, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                        androidx.compose.foundation.layout.Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(text = "🔔 Notif: ${log.notificationTime}", fontSize = 10.sp, color = Color.Gray)
+                            Text(text = "📧 Email: ${log.emailTime}", fontSize = 10.sp, color = Color.Gray)
+                        }
+                    }
                 }
             }
         }
@@ -222,7 +216,7 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
         ).setApplicationName("LinkedinAgent").build()
     }
 
-suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): String? = withContext(Dispatchers.IO) {
+suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pair<String?, String?> = withContext(Dispatchers.IO) {
     try {
         // Updated Query:
         // 1. from:invitations@linkedin.com -> precise sender
@@ -237,25 +231,29 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Str
             .setMaxResults(1L)
             .execute()
 
-        val messageId = response.messages?.firstOrNull()?.id ?: return@withContext null
+        val messageId = response.messages?.firstOrNull()?.id ?: return@withContext null to null
 
         // Fetch the full message content
         val fullMessage = service.users().messages().get("me", messageId).execute()
-        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext null
+
+        // SIMPLE: Get the time from the message metadata
+        val sdf = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+        val emailTime = sdf.format(java.util.Date(fullMessage.internalDate ?: 0L))
+
+
+        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext null to emailTime
         val contact = parseLinkedInFinal(htmlBody)
-//        println("htmlBody:$htmlBody\t contact:$contact")
-        if (contact != null) {
-//            println("Parsed Contact: ${contact.name} | ${contact.headline}")
-            // Return a formatted string or modify the function signature to return LinkedInContact
-            return@withContext "${contact.name} (${contact.headline})"
+
+        val resultText = if (contact != null) {
+            "${contact.name} (${contact.headline})"
+        } else {
+            fullMessage.snippet
         }
 
-//        println("fullMessage:$fullMessage")
-        // Return the snippet (short summary) or you can parse the full body
-        return@withContext fullMessage.snippet
+        return@withContext resultText to emailTime
     } catch (e: Exception) {
         e.printStackTrace()
-        null
+        null to null
     }
 }
 /**
@@ -286,7 +284,7 @@ private fun extractHtmlFromBody(message: com.google.api.services.gmail.model.Mes
 fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
     try {
         // 1. Extract Name from the "Preheader" data attribute or the bold text
-        // In your logs: See Aswin’s connections...
+
         val namePattern = """See\s+([^'’\s]+)\s*[’']s""".toRegex()
         val name = namePattern.find(htmlBody)?.groups?.get(1)?.value?.trim() ?: "Unknown"
 
