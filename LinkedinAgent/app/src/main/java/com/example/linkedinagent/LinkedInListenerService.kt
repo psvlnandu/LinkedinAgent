@@ -13,8 +13,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
-
-import com.example.linkedinagent.BuildConfig
 // Instead of hardcoding, use the generated BuildConfig
 private const val NOTION_TOKEN = BuildConfig.NOTION_TOKEN
 private const val DATABASE_ID = BuildConfig.DATABASE_ID
@@ -113,27 +111,36 @@ class LinkedInListenerService : NotificationListenerService() {
                     val result = fetchLinkedInAcceptanceEmail(gmailService, personName)
                     val parsedText = result.first
                     val emailTime = result.second
+                    val mId = result.third // Note: We need to update fetch to return the ID too
+
 
                     println("resultSnippet: $parsedText")
 
                     if (parsedText != null) {
                         // 5. Update UI with the structured Log object
                         withContext(Dispatchers.Main) {
-                            AgentState.emailLogs.add(0, AgentLog(
-                                message = parsedText,
-                                notificationTime = notifTime,
-                                emailTime = emailTime ?: "Unknown"
-                            ))
+                            val alreadyExists = AgentState.emailLogs.any { it.messageId == mId }
+                            if (!alreadyExists) {
+                                AgentState.emailLogs.add(
+                                    0, AgentLog(
+                                        message = parsedText,
+                                        notificationTime = notifTime,
+                                        emailTime = emailTime ?: "Unknown",
+                                        isCompleted = false,
+                                        messageId = mId?:""
+                                    )
+                                )
+                            }
                         }
 
                         // 6. Extract headline for Notion Search
                         // headline is usually inside the parentheses in parsedText
                         if (parsedText.contains("(")) {
                             val headline = parsedText.substringAfter("(").substringBefore(")")
-                            searchDatabaseForCompany(headline)
+                            searchDatabaseForCompany(headline, mId)
                         } else {
                             // If no parentheses, try searching with the whole text
-                            searchDatabaseForCompany(parsedText)
+                            searchDatabaseForCompany(parsedText,mId)
                         }
                     } else {
                         println("Gmail Search: No matching email found for $personName yet.")
@@ -148,7 +155,7 @@ class LinkedInListenerService : NotificationListenerService() {
     }
     // Add these constants at the top of your class
 
-    private suspend fun searchDatabaseForCompany(headline: String) {
+    private suspend fun searchDatabaseForCompany(headline: String, mId: String?) {
         val client = OkHttpClient()
 
         // Extract company name (e.g., "Software Engineer at Google" -> "Google")
@@ -209,13 +216,17 @@ class LinkedInListenerService : NotificationListenerService() {
                             AgentState.emailLogs.add(0, AgentLog(
                                 message = "MATCH: Found $actualNotionName in Job Tracker!",
                                 notificationTime = currentTime,
-                                emailTime = "DB Sync"
+                                emailTime = "DB Sync",
+                                messageId = mId?:"",
+                                isCompleted = false,
                             ))
                         } else {
                             AgentState.emailLogs.add(0, AgentLog(
                                 message = "❌ No record for $companyName in Notion.",
                                 notificationTime = currentTime,
-                                emailTime = "DB Sync"
+                                emailTime = "DB Sync",
+                                messageId = mId?:"",
+                                isCompleted = false
                             ))
                         }
                     }
@@ -229,7 +240,9 @@ class LinkedInListenerService : NotificationListenerService() {
                     AgentState.emailLogs.add(0, AgentLog(
                         message = "Notion Error: ${e.message}",
                         notificationTime = currentTime,
-                        emailTime = "Error"
+                        emailTime = "Error",
+                        messageId = mId?:"",
+                        isCompleted = false
                     ))
                 }
             }

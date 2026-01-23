@@ -224,7 +224,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                                 tint = Color.Red.copy(alpha = 0.6f)
                             )
                         }
-                    
+
                     }
                 }
             }
@@ -263,7 +263,7 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
         ).setApplicationName("LinkedinAgent").build()
     }
 
-suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pair<String?, String?> = withContext(Dispatchers.IO) {
+suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Triple <String?, String?, String?> = withContext(Dispatchers.IO) {
     try {
         // Updated Query:
         // 1. from:invitations@linkedin.com -> precise sender
@@ -278,7 +278,7 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pai
             .setMaxResults(1L)
             .execute()
 
-        val messageId = response.messages?.firstOrNull()?.id ?: return@withContext null to null
+        val messageId = response.messages?.firstOrNull()?.id ?: return@withContext Triple(null, null, null)
 
         // Fetch the full message content
         val fullMessage = service.users().messages().get("me", messageId).execute()
@@ -288,7 +288,8 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pai
         val emailTime = sdf.format(java.util.Date(fullMessage.internalDate ?: 0L))
 
 
-        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext null to emailTime
+        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext Triple(null, emailTime, messageId)
+
         val contact = parseLinkedInFinal(htmlBody)
 
         val resultText = if (contact != null) {
@@ -297,10 +298,10 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pai
             fullMessage.snippet
         }
 
-        return@withContext resultText to emailTime
+        return@withContext Triple(resultText, emailTime, messageId)
     } catch (e: Exception) {
         e.printStackTrace()
-        null to null
+        Triple(null, null, null)
     }
 }
 /**
