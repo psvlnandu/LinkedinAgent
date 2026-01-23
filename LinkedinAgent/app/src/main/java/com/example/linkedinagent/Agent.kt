@@ -7,7 +7,8 @@ data class AgentLog(
     val message: String,
     val notificationTime: String,
     val emailTime: String,
-    var isCompleted: Boolean = false
+    var isCompleted: Boolean = false,
+    val messageId: String
 )
 
 data class LinkedInContact(val name: String, val headline: String)
