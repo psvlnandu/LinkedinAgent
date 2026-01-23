@@ -194,9 +194,20 @@ class LinkedInListenerService : NotificationListenerService() {
                         val currentTime = sdf.format(java.util.Date())
 
                         if (results != null && results.length() > 0) {
+                            val firstMatch = results.getJSONObject(0)
+                            val properties = firstMatch.getJSONObject("properties")
+                            val companyProperty = properties.getJSONObject("Company")
+                            val titleArray = companyProperty.getJSONArray("title")
+
+                            val actualNotionName = if (titleArray.length() > 0) {
+                                titleArray.getJSONObject(0).getJSONObject("text").getString("content")
+                            } else {
+                                companyName // Fallback to your keyword if extraction fails
+                            }
+
                             // We create an AgentLog object instead of just a string
                             AgentState.emailLogs.add(0, AgentLog(
-                                message = "MATCH: Found $companyName in Job Tracker!",
+                                message = "MATCH: Found $actualNotionName in Job Tracker!",
                                 notificationTime = currentTime,
                                 emailTime = "DB Sync"
                             ))
