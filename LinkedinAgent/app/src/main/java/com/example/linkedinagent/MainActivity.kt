@@ -224,7 +224,7 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Pai
         // 3. category:social -> targets the correct Gmail tab
         // 4. $personName -> looks for the name specifically
 
-        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:1d"
+        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:2d"
 
         val response = service.users().messages().list("me")
             .setQ(query)

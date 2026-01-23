@@ -53,7 +53,7 @@ class LinkedInListenerService : NotificationListenerService() {
         }
         else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
            // later
-            triggerGmailSearch("Varun ")
+            triggerGmailSearch("kelda ")
         }
         /*
         else if (packageName=="com.google.android.gm"){
@@ -159,12 +159,16 @@ class LinkedInListenerService : NotificationListenerService() {
         }
 
         // Notion Filter JSON: Search for a property named "Company" (adjust to your column name)
+        val keywords = headline.split(",", "|", "@", " at ").map { it.trim() }
+
         val jsonFilter = """
-            {    "filter": {
-                    "property": "Company",
-                    "title": {
-                        "contains": "$companyName"
-                    }
+            {
+                "filter": {
+                    "or": [
+                        ${keywords.joinToString(",") { keyword ->
+                        """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+                    }}
+                    ]
                 }
             }
             """.trimIndent()
