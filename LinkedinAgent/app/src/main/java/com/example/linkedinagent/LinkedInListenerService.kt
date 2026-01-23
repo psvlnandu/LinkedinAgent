@@ -158,12 +158,7 @@ class LinkedInListenerService : NotificationListenerService() {
     private suspend fun searchDatabaseForCompany(headline: String, mId: String?) {
         val client = OkHttpClient()
 
-        // Extract company name (e.g., "Software Engineer at Google" -> "Google")
-        val companyName = if (headline.contains(" at ", true)) {
-            headline.split(" at ", ignoreCase = true).last().trim()
-        } else {
-            headline
-        }
+
 
         // Notion Filter JSON: Search for a property named "Company" (adjust to your column name)
         val keywords = headline.split(",", "|", "@", " at ").map { it.trim() }
@@ -208,8 +203,8 @@ class LinkedInListenerService : NotificationListenerService() {
 
                             val actualNotionName = if (titleArray.length() > 0) {
                                 titleArray.getJSONObject(0).getJSONObject("text").getString("content")
-                            } else {
-                                companyName // Fallback to your keyword if extraction fails
+                            }else{
+                                //nothing
                             }
 
                             // We create an AgentLog object instead of just a string
@@ -222,7 +217,7 @@ class LinkedInListenerService : NotificationListenerService() {
                             ))
                         } else {
                             AgentState.emailLogs.add(0, AgentLog(
-                                message = "❌ No record for $companyName in Notion.",
+                                message = "❌ No record for $headline in Notion.",
                                 notificationTime = currentTime,
                                 emailTime = "DB Sync",
                                 messageId = mId?:"",
