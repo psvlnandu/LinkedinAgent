@@ -45,7 +45,7 @@ class LinkedInListenerService : NotificationListenerService() {
 
             }
             if(nameToSearch.isNotEmpty()) {
-//                triggerGmailSearch(nameToSearch)
+                triggerGmailSearch(nameToSearch)
             }
 
 
