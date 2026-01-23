@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -168,15 +170,41 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                 Card(Modifier
                     .padding(4.dp)
                     .fillMaxWidth()) {
-                    Column(Modifier.padding(8.dp)) {
-                        Text(text = log.message, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row( modifier = Modifier
+                        .padding(8.dp)
+                        .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically // Align items to center
+                    ) {
 
-                        androidx.compose.foundation.layout.Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(text = "🔔 Notif: ${log.notificationTime}", fontSize = 10.sp, color = Color.Gray)
-                            Text(text = "📧 Email: ${log.emailTime}", fontSize = 10.sp, color = Color.Gray)
+                        Checkbox(
+                            checked = log.isCompleted,
+                            onCheckedChange = { isChecked ->
+                                // Find the index and update the state to trigger UI refresh
+                                val index = AgentState.emailLogs.indexOf(log)
+                                if (index != -1) {
+                                    AgentState.emailLogs[index] = log.copy(isCompleted = isChecked)
+                                }
+                            }
+                        )
+
+                        Column(Modifier.padding(8.dp)) {
+                            Text(text = log.message, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                            androidx.compose.foundation.layout.Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Notif: ${log.notificationTime}",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray
+                                )
+                                Text(
+                                    text = "Email: ${log.emailTime}",
+                                    fontSize = 10.sp,
+                                    color = Color.Gray
+                                )
+                            }
                         }
                     }
                 }
