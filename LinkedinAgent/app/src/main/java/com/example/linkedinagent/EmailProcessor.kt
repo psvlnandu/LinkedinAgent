@@ -15,7 +15,7 @@ class EmailProcessor(private val gmailService: Gmail) {
         println("Gemini initialized with key length: ${GEMINI_API_KEY.length}")
     }
     private val geminiModel = GenerativeModel(
-        modelName = "gemini-1.5-flash",
+        modelName = "gemini-2.5-flash",
         apiKey =GEMINI_API_KEY
     )
     suspend fun processMessage(messageId: String) = withContext(Dispatchers.IO) {
