@@ -61,6 +61,19 @@ class EmailProcessor(private val gmailService: Gmail) {
                         timestamp = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
                     ))
                 }
+
+                // 2. Map the AI result to your Notion Status Tags
+                val notionStatus = when (category) {    EmailCategory.REJECTION -> "Rejected"
+                    EmailCategory.INTERVIEW -> "Exam Scheduled"
+                    else -> null
+                }
+                if (notionStatus != null) {
+                    // You'll first need to find the Page ID for that company
+                    val pageId = NotionUtils.findPageIdForCompany(company)
+                    if (pageId != null) {
+                        NotionUtils.updateNotionStatus(pageId, notionStatus)
+                    }
+                }
             }
 
         } catch (e: Exception) {

@@ -3,6 +3,7 @@ package com.example.linkedinagent
 import android.content.Context
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.util.Log.e
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,17 +14,17 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
-class NotionUtils {
+object NotionUtils {
 
     private  val NOTION_TOKEN = BuildConfig.NOTION_TOKEN
+    private val client = OkHttpClient()
     /**
      * Updates the status of a specific page in Notion
      * @param pageId The ID of the page to update
      * @param newStatus The name of the status (e.g., "Accepted", "Interview")
      */
 
-    private suspend fun updateNotionStatus(pageId: String, newStatus: String) {
-        val client = OkHttpClient()
+    suspend fun updateNotionStatus(pageId: String, newStatus: String) {
 
         // Notion API requires a PATCH request to update page properties
         val jsonBody = """
@@ -51,4 +52,66 @@ class NotionUtils {
             } catch (e: Exception) { e.printStackTrace() }
         }
     }
+    /**
+     * Searches for a company in Notion using your keyword-split logic.
+     * Returns Pair(PageID, OfficialName) if found.
+     */
+    suspend fun findPageIdForCompany(headline: String): Pair<String?, String?> = withContext(Dispatchers.IO) {
+        val keywords = headline.split(",", "|", "@", " at ").map { it.trim() }
+
+        val jsonFilter = """
+            {
+                "filter": {
+                    "or": [
+                        ${
+            keywords.joinToString(",") { keyword ->
+                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+            }
+        }
+                    ]
+                }
+            }
+        """.trimIndent()
+
+        val request = Request.Builder()
+            .url("https://api.notion.com/v1/databases/${BuildConfig.DATABASE_ID}/query")
+            .addHeader("Authorization", "Bearer ${BuildConfig.NOTION_TOKEN}")
+            .addHeader("Notion-Version", "2022-06-28")
+            .addHeader("Content-Type", "application/json")
+            .post(jsonFilter.toRequestBody("application/json".toMediaType()))
+            .build()
+        try {
+
+            client.newCall(request).execute().use { response ->
+                val body = response.body?.string()
+                val jsonResponse = JSONObject(body ?: "{}")
+                val results = jsonResponse.optJSONArray("results")
+
+                if (results != null && results.length() > 0) {
+                    val firstMatch = results.getJSONObject(0)
+                    val pageId = firstMatch.getString("id")
+
+                    // Digging into properties to get the official name (your reference logic)
+                    val properties = firstMatch.getJSONObject("properties")
+                    val companyProperty = properties.getJSONObject("Company")
+                    val titleArray = companyProperty.getJSONArray("title")
+
+                    val actualNotionName = if (titleArray.length() > 0) {
+                        titleArray.getJSONObject(0).getJSONObject("text").getString("content")
+                    } else {
+                        null
+                    }
+
+                    return@withContext pageId to actualNotionName
+                }
+
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+
+        }
+        null to null
+    }
+
 }
