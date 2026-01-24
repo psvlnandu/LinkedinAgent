@@ -71,6 +71,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                     )
                 }
                 val (pageId, officialName) = NotionUtils.findPageIdForCompany(company)
+                println("pageId: $pageId, officialName: $officialName")
                 if (pageId != null) {
                     //   2. Map the AI result to your Notion Status Tags
                     val notionStatus = when (category) {
@@ -84,7 +85,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                     // You'll first need to find the Page ID for that company
 
                     val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
-                    println("success?$success")
+//                    println("success?$success")
                 } }
             }
 
@@ -100,7 +101,7 @@ class EmailProcessor(private val gmailService: Gmail) {
     private suspend fun classifyUsingAI(prompt: String): String {
         return try {
             val aiResponse = geminiModel.generateContent(prompt)
-            println("aiResponse:$aiResponse")
+//            println("aiResponse:$aiResponse")
             val result = aiResponse.text ?: "OTHER"
             result
         } catch (e: Exception) {
