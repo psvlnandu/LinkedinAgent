@@ -101,6 +101,14 @@ class EmailProcessor(private val gmailService: Gmail) {
     }
     suspend fun processLinkedInAcceptance(messageId: String) = withContext(Dispatchers.IO) {
         try {
+            val query = "from:invitations@linkedin.com category:social \"accepted your invitation\" is:unread newer_than:2d"
+            val searchResponse = gmailService.users().messages().list("me")
+                .setQ(query)
+                .setMaxResults(5L)
+                .execute()
+
+            val mId = searchResponse.messages?.firstOrNull()?.id ?: return@withContext
+
             val fullMessage = gmailService.users().messages().get("me", messageId).execute()
             val bodyHtml = extractHtmlFromBody(fullMessage) ?: ""
 
