@@ -5,10 +5,12 @@ import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+// Ensure this matches your package name exactly
+import com.example.linkedinagent.BuildConfig
 /**
  * The Engine responsible for the Fetch -> Classify -> State workflow
  */
-private const val GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY
+private val GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY
 class EmailProcessor(private val gmailService: Gmail) {
     private val geminiModel = GenerativeModel(
         modelName = "gemini-1.5-flash",
