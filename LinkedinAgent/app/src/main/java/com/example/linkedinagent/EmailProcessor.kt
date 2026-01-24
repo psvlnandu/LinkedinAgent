@@ -29,12 +29,16 @@ class EmailProcessor(private val gmailService: Gmail) {
             val subject = metadata.payload.headers.find { it.name == "Subject" }?.value ?: ""
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""
 
-            val isLinkedInAcceptance = subject.contains("accepted your invitation", ignoreCase = true)
+            val isLinkedInAcceptance =
+                subject.contains("accepted your invitation", ignoreCase = true)
             if (isLinkedInAcceptance) {
                 processLinkedInAcceptance(messageId)
-            }
+            } else {
 
-            val subjectPrompt = "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
+
+
+            val subjectPrompt =
+                "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
             val isJobRelated = classifyUsingAI(subjectPrompt).contains("TRUE", ignoreCase = true)
             //println("isJobRelated: $isJobRelated")
 
@@ -87,13 +91,15 @@ class EmailProcessor(private val gmailService: Gmail) {
                     }
 
 
-                if (notionStatus != null) {
-                    // You'll first need to find the Page ID for that company
+                    if (notionStatus != null) {
+                        // You'll first need to find the Page ID for that company
 
-                    val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
+                        val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
 //                    println("success?$success")
-                } }
+                    }
+                }
             }
+        }
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -101,51 +107,50 @@ class EmailProcessor(private val gmailService: Gmail) {
     }
     suspend fun processLinkedInAcceptance(messageId: String) = withContext(Dispatchers.IO) {
         try {
-            val query = "from:invitations@linkedin.com category:social \"accepted your invitation\" is:unread newer_than:2d"
-            val searchResponse = gmailService.users().messages().list("me")
-                .setQ(query)
-                .setMaxResults(5L)
-                .execute()
-
-            val mId = searchResponse.messages?.firstOrNull()?.id ?: return@withContext
-
+            // 1. Fetch the actual email content directly using the messageId
             val fullMessage = gmailService.users().messages().get("me", messageId).execute()
-            val bodyHtml = extractHtmlFromBody(fullMessage) ?: ""
+            val bodyHtml = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 
-            // 2. Use AI to extract Company Name precisely
-            // This solves the problem of users not putting the company in their title
+            // 2. ONE Single, Powerful AI Prompt
+            // Combining Name and Company extraction into one call saves tokens and time
             val extractionPrompt = """
-            Analyze this LinkedIn acceptance email body. 
-            Identify the person who accepted the invite and their current company/organization.
-            If the company is not explicitly in their headline, look for context in the 'explore their network' section or signature.
-            Return ONLY the Company Name. If not found, return 'UNKNOWN'.
-            Body: ${bodyHtml.take(1000)}
+            Analyze this LinkedIn acceptance email. 
+            Identify the person who accepted the invite and their current company.
+            Look at the headline, footer, or 'explore their network' sections.
+            Return ONLY in this format: Name | Company
+            If company is not found, return Name | UNKNOWN.
+            Body: $bodyHtml
         """.trimIndent()
 
-            val companyName = classifyUsingAI(extractionPrompt).trim()
+            val aiResult = classifyUsingAI(extractionPrompt) // Result: "Varun | Groq"
+            val parts = aiResult.split("|")
 
-            if (companyName != "UNKNOWN") {
-                // 3. Search Notion using your refined search logic
-                val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
+            if (parts.size == 2) {
+                val personName = parts[0].trim()
+                val companyName = parts[1].trim()
 
-                if (pageId != null) {
-                    // 4. Update the Notion Status to "Linkedin Chat" (the yellow tag from your screenshot)
-                    NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+                if (companyName != "UNKNOWN") {
+                    // 3. Search and Sync with Notion (Your refined logic)
+                    val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
 
-                    withContext(Dispatchers.Main) {
-                        AgentState.emailLogs.add(
-                            0, AgentLog(
-                                message = "CONNECTED: Found $officialName. Status set to Linkedin Chat.",
-                                notificationTime = "",
+                    if (pageId != null) {
+                        NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+
+                        withContext(Dispatchers.Main) {
+                            AgentState.emailLogs.add(0, AgentLog(
+                                message = "CONNECTED: $personName @ ${officialName ?: companyName}",
+                                notificationTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
                                 emailTime = "LinkedIn Sync",
                                 messageId = messageId,
                                 isCompleted = true
-                            )
-                        )
+                            ))
+                        }
                     }
                 }
             }
-        }catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
     /*
     PROMPT
