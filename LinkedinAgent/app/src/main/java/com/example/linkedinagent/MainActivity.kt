@@ -221,7 +221,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Delete Log",
-                                tint = Color.Red.copy(alpha = 0.6f)
+                                tint = Color.LightGray.copy(alpha = 0.6f)
                             )
                         }
 
@@ -271,7 +271,7 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Tri
         // 3. category:social -> targets the correct Gmail tab
         // 4. $personName -> looks for the name specifically
 
-        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:2d"
+        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:3d"
 
         val response = service.users().messages().list("me")
             .setQ(query)
@@ -308,7 +308,7 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Tri
  * Helper to dig through Gmail's multi-part message structure to find the HTML string
  */
 
-private fun extractHtmlFromBody(message: com.google.api.services.gmail.model.Message): String? {
+fun extractHtmlFromBody(message: com.google.api.services.gmail.model.Message): String? {
     val payload = message.payload
 
     // Recursive function to find text/html part in multipart emails

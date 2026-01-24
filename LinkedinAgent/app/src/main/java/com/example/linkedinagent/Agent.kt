@@ -17,4 +17,14 @@ data class LinkedInContact(val name: String, val headline: String)
 object AgentState {
     // This list will automatically update your LazyColumn when items are added
     val emailLogs = mutableStateListOf<AgentLog>()
+    val careerUpdates = mutableStateListOf<CareerUpdate>()
 }
+
+enum class EmailCategory { REJECTION, INTERVIEW, OTHER, PENDING }
+
+data class CareerUpdate(
+    val company: String,
+    val subject: String,
+    val category: EmailCategory,
+    val timestamp: String
+)

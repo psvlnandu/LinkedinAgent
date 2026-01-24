@@ -51,7 +51,7 @@ class LinkedInListenerService : NotificationListenerService() {
 
         } else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
             // later
-            triggerGmailSearch("kelda ")
+            triggerGmailSearch("Varun ")
         }
 
     }
@@ -133,10 +133,10 @@ class LinkedInListenerService : NotificationListenerService() {
                 "filter": {
                     "or": [
                         ${
-            keywords.joinToString(",") { keyword ->
-                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
-            }
-        }
+                            keywords.joinToString(",") { keyword ->
+                                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+                            }
+                        }
                     ]
                 }
             }
