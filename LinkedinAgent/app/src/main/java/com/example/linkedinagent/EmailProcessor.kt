@@ -1,5 +1,6 @@
 package com.example.linkedinagent
 
+import androidx.compose.ui.semantics.text
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +73,10 @@ class EmailProcessor(private val gmailService: Gmail) {
     */
     private suspend fun classifyUsingAI(prompt: String): String {
         return try {
-            geminiModel.generateContent(prompt).text ?: "OTHER"
+            val aiResponse = geminiModel.generateContent(prompt)
+            println("aiResponse:$aiResponse")
+            val result = aiResponse.text ?: "OTHER"
+            result
         } catch (e: Exception) {
             "ERROR"
         }

@@ -51,18 +51,13 @@ class LinkedInListenerService : NotificationListenerService() {
 
         } else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
             // later
-            triggerGmailSearch("Varun ")
+//            triggerGmailSearch("Varun ")
         }
         else if (packageName == "com.google.android.gm") {
 
 
 
             scope.launch {
-                // 1. Initial filter: Don't waste API calls on non-career emails
-                val jobKeywords = listOf("application", "careers", "update", "hiring", "talent", "interview")
-                val looksLikeJobEmail = jobKeywords.any {
-                    title.contains(it, ignoreCase = true) || text.contains(it, ignoreCase = true)
-                }
 
                 scope.launch {
                     val context = applicationContext
@@ -75,15 +70,18 @@ class LinkedInListenerService : NotificationListenerService() {
 
                             // We search for the message based on the subject to get the ID
                             // so the processor can do the full fetch.
-                            val query = "is:unread subject:($title) newer_than:1h"
+                            val query = "$title newer_than:1h"
+
                             val response = gmailService.users().messages().list("me")
                                 .setQ(query)
                                 .setMaxResults(1L)
                                 .execute()
-
+                            println("response:$response")
                             val mId = response.messages?.firstOrNull()?.id
+                            println("Gmail Trigger: $mId")
 
                             if (mId != null) {
+                                println("Processing Email...")
                                 val processor = EmailProcessor(gmailService)
                                 // This now contains your 2-step AI Subject & Body check
                                 processor.processMessage(mId)
