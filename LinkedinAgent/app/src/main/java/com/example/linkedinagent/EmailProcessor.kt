@@ -39,7 +39,8 @@ class EmailProcessor(private val gmailService: Gmail) {
                 val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 //                println("body: $body")
 
-                val bodyPrompt = "Read the Email body and return exactly one word: 'REJECTION', 'INTERVIEW', or 'OTHER'. Body: $body"
+                val bodyPrompt =
+                    "Read the Email body and return exactly one word: 'REJECTION', 'INTERVIEW', or 'OTHER'. Body: $body"
                 val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
                 println("categoryResult: $categoryResult")
                 val category = when {
@@ -48,32 +49,43 @@ class EmailProcessor(private val gmailService: Gmail) {
                     else -> EmailCategory.OTHER
                 }
 
-                val companyPrompt = "Extract only the company name from this text. Subject: $subject Body: ${body.take(1000)}"
+                val companyPrompt =
+                    "Extract only the company name from this text. Subject: $subject Body: ${
+                        body.take(1000)
+                    }"
                 val company = classifyUsingAI(companyPrompt).trim()
                 println("company: $company")
 
                 // 6. Update State for Compose
                 withContext(Dispatchers.Main) {
-                    AgentState.careerUpdates.add(0, CareerUpdate(
-                        company = company,
-                        subject = subject,
-                        category = category,
-                        timestamp = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())
-                    ))
+                    AgentState.careerUpdates.add(
+                        0, CareerUpdate(
+                            company = company,
+                            subject = subject,
+                            category = category,
+                            timestamp = java.text.SimpleDateFormat(
+                                "HH:mm",
+                                java.util.Locale.getDefault()
+                            ).format(java.util.Date())
+                        )
+                    )
                 }
+                val (pageId, officialName) = NotionUtils.findPageIdForCompany(company)
+                if (pageId != null) {
+                    //   2. Map the AI result to your Notion Status Tags
+                    val notionStatus = when (category) {
+                        EmailCategory.REJECTION -> "Rejected"
+                        EmailCategory.INTERVIEW -> "Exam Scheduled"
+                        else -> null
+                    }
 
-                // 2. Map the AI result to your Notion Status Tags
-                val notionStatus = when (category) {    EmailCategory.REJECTION -> "Rejected"
-                    EmailCategory.INTERVIEW -> "Exam Scheduled"
-                    else -> null
-                }
+
                 if (notionStatus != null) {
                     // You'll first need to find the Page ID for that company
-                    val pageId = NotionUtils.findPageIdForCompany(company)
-                    if (pageId != null) {
-                        NotionUtils.updateNotionStatus(pageId, notionStatus)
-                    }
-                }
+
+                    val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
+                    println("success?$success")
+                } }
             }
 
         } catch (e: Exception) {
