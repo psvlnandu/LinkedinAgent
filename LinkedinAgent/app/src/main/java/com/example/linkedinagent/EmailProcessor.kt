@@ -28,25 +28,27 @@ class EmailProcessor(private val gmailService: Gmail) {
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""
             val subjectPrompt = "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
             val isJobRelated = classifyUsingAI(subjectPrompt).contains("TRUE", ignoreCase = true)
+            println("isJobRelated: $isJobRelated")
 
             if (isJobRelated) {
 
 
                 val fullMessage = gmailService.users().messages().get("me", messageId).execute()
                 val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
-
+                println("body: $body")
 
                 val bodyPrompt = "Read the Email body and return exactly one word: 'REJECTION', 'INTERVIEW', or 'OTHER'. Body: $body"
                 val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
-
+                println("categoryResult: $categoryResult")
                 val category = when {
                     categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
                     categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
                     else -> EmailCategory.OTHER
                 }
 
-                val companyPrompt = "Extract only the company name from this text. Subject: $subject Body: ${body.take(200)}"
+                val companyPrompt = "Extract only the company name from this text. Subject: $subject Body: ${body.take(1000)}"
                 val company = classifyUsingAI(companyPrompt).trim()
+                println("company: $company")
 
                 // 6. Update State for Compose
                 withContext(Dispatchers.Main) {
