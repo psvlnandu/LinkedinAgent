@@ -1,6 +1,4 @@
 package com.example.linkedinagent
-
-import androidx.compose.ui.semantics.text
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
@@ -13,6 +11,9 @@ import com.example.linkedinagent.BuildConfig
  */
 private val GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY
 class EmailProcessor(private val gmailService: Gmail) {
+    init {
+        println("Gemini initialized with key length: ${GEMINI_API_KEY.length}")
+    }
     private val geminiModel = GenerativeModel(
         modelName = "gemini-1.5-flash",
         apiKey =GEMINI_API_KEY
@@ -78,6 +79,7 @@ class EmailProcessor(private val gmailService: Gmail) {
             val result = aiResponse.text ?: "OTHER"
             result
         } catch (e: Exception) {
+            e.printStackTrace()
             "ERROR"
         }
     }
