@@ -28,6 +28,12 @@ class EmailProcessor(private val gmailService: Gmail) {
 
             val subject = metadata.payload.headers.find { it.name == "Subject" }?.value ?: ""
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""
+
+            val isLinkedInAcceptance = subject.contains("accepted your invitation", ignoreCase = true)
+            if (isLinkedInAcceptance) {
+                processLinkedInAcceptance(messageId)
+            }
+
             val subjectPrompt = "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
             val isJobRelated = classifyUsingAI(subjectPrompt).contains("TRUE", ignoreCase = true)
             //println("isJobRelated: $isJobRelated")
@@ -92,6 +98,46 @@ class EmailProcessor(private val gmailService: Gmail) {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+    suspend fun processLinkedInAcceptance(messageId: String) = withContext(Dispatchers.IO) {
+        try {
+            val fullMessage = gmailService.users().messages().get("me", messageId).execute()
+            val bodyHtml = extractHtmlFromBody(fullMessage) ?: ""
+
+            // 2. Use AI to extract Company Name precisely
+            // This solves the problem of users not putting the company in their title
+            val extractionPrompt = """
+            Analyze this LinkedIn acceptance email body. 
+            Identify the person who accepted the invite and their current company/organization.
+            If the company is not explicitly in their headline, look for context in the 'explore their network' section or signature.
+            Return ONLY the Company Name. If not found, return 'UNKNOWN'.
+            Body: ${bodyHtml.take(1000)}
+        """.trimIndent()
+
+            val companyName = classifyUsingAI(extractionPrompt).trim()
+
+            if (companyName != "UNKNOWN") {
+                // 3. Search Notion using your refined search logic
+                val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
+
+                if (pageId != null) {
+                    // 4. Update the Notion Status to "Linkedin Chat" (the yellow tag from your screenshot)
+                    NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+
+                    withContext(Dispatchers.Main) {
+                        AgentState.emailLogs.add(
+                            0, AgentLog(
+                                message = "CONNECTED: Found $officialName. Status set to Linkedin Chat.",
+                                notificationTime = "",
+                                emailTime = "LinkedIn Sync",
+                                messageId = messageId,
+                                isCompleted = true
+                            )
+                        )
+                    }
+                }
+            }
+        }catch (e: Exception) { e.printStackTrace() }
     }
     /*
     PROMPT
