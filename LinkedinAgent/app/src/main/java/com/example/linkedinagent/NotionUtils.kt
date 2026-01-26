@@ -67,10 +67,10 @@ object NotionUtils {
                 "filter": {
                     "or": [
                         ${
-            keywords.joinToString(",") { keyword ->
-                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
-            }
-        }
+                            keywords.joinToString(",") { keyword ->
+                                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+                            }
+                        }
                     ]
                 }
             }

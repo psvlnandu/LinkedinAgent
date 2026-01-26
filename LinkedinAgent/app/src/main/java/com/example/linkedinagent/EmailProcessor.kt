@@ -35,12 +35,15 @@ class EmailProcessor(private val gmailService: Gmail) {
 
             val subject = metadata.payload.headers.find { it.name == "Subject" }?.value ?: ""
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""
-            println("Subject: $subject, Sender: $sender")
+
             val isLinkedInAcceptance =
                 subject.contains("accepted your invitation", ignoreCase = true)
+            println("Subject: $subject, Sender: $sender, isLinkedInAcceptance: $isLinkedInAcceptance")
+
             if (isLinkedInAcceptance) {
                 processLinkedInAcceptance(sender, messageId)
-            } else {
+            }
+            else {
                 // for the other category- APPLIED, REJECTED , INTERVIEW
 
 
@@ -159,7 +162,7 @@ class EmailProcessor(private val gmailService: Gmail) {
 
                 val aiResult = classifyUsingAI(extractionPrompt) // Result: "Varun | Groq"
                 val parts = aiResult.split("|")
-
+                println("aiResult: $aiResult, parts: $parts")
                 if (parts.size == 2) {
                     val personName = parts[0].trim()
                     val companyName = parts[1].trim()
