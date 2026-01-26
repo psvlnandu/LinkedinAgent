@@ -38,8 +38,9 @@ class EmailProcessor(private val gmailService: Gmail) {
             val isLinkedInAcceptance =
                 subject.contains("accepted your invitation", ignoreCase = true)
             if (isLinkedInAcceptance) {
-                processLinkedInAcceptance(messageId)
+                processLinkedInAcceptance(sender, messageId)
             } else {
+                // for the other category- APPLIED, REJECTED , INTERVIEW
 
 
                 val subjectPrompt =
@@ -105,7 +106,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                                     if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
                                 val success = NotionUtils.updateNotionStatus(pageId, targetStatus)
                                 println("Notion: Updated $extractedCompany to $targetStatus\n$success")
-                            }else{
+                            } else {
                                 println("Notion: No page found for $extractedCompany")
                             }
                         }
@@ -138,58 +139,60 @@ class EmailProcessor(private val gmailService: Gmail) {
         }
     }
 
-    suspend fun processLinkedInAcceptance(messageId: String) = withContext(Dispatchers.IO) {
-        try {
-            // 1. Fetch the actual email content directly using the messageId
-            val fullMessage = gmailService.users().messages().get("me", messageId).execute()
-            val bodyHtml = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
+    suspend fun processLinkedInAcceptance(sender: String, messageId: String) =
+        withContext(Dispatchers.IO) {
+            try {
+                // 1. Fetch the actual email content directly using the messageId
+                val fullMessage = gmailService.users().messages().get("me", messageId).execute()
+                val bodyHtml = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 
-            // 2. ONE Single, Powerful AI Prompt
-            // Combining Name and Company extraction into one call saves tokens and time
-            val extractionPrompt = """
-            Analyze this LinkedIn acceptance email. 
-            Identify the person who accepted the invite and their current company.
-            Look at the headline, footer, or 'explore their network' sections.
-            Return ONLY in this format: Name | Company
-            If company is not found, return Name | UNKNOWN.
-            Body: $bodyHtml
-        """.trimIndent()
+                // 2. ONE Single, Powerful AI Prompt
+                // Combining Name and Company extraction into one call saves tokens and time
+                val extractionPrompt = """
+                    Analyze this LinkedIn acceptance email. 
+                    Identify the person who accepted the invite and their current company.
+                    Look at the headline, footer, or 'explore their network' sections.
+                    Return ONLY in this format: Name | Company
+                    If company is not found, return Name | UNKNOWN.
+                    Body: $bodyHtml
+                """.trimIndent()
 
-            val aiResult = classifyUsingAI(extractionPrompt) // Result: "Varun | Groq"
-            val parts = aiResult.split("|")
+                val aiResult = classifyUsingAI(extractionPrompt) // Result: "Varun | Groq"
+                val parts = aiResult.split("|")
 
-            if (parts.size == 2) {
-                val personName = parts[0].trim()
-                val companyName = parts[1].trim()
+                if (parts.size == 2) {
+                    val personName = parts[0].trim()
+                    val companyName = parts[1].trim()
 
-                if (companyName != "UNKNOWN") {
-                    // 3. Search and Sync with Notion (Your refined logic)
-                    val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
+                    if (companyName != "UNKNOWN") {
+                        // 3. Search and Sync with Notion (Your refined logic)
+                        val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
 
-                    if (pageId != null) {
-                        NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
-
-                        withContext(Dispatchers.Main) {
-                            AgentState.emailLogs.add(
-                                0, AgentLog(
-                                    message = "CONNECTED: $personName @ ${officialName ?: companyName}",
-                                    notificationTime = java.text.SimpleDateFormat(
-                                        "HH:mm",
-                                        java.util.Locale.getDefault()
-                                    ).format(java.util.Date()),
-                                    emailTime = "LinkedIn Sync",
-                                    messageId = messageId,
-                                    isCompleted = true
+                        if (pageId != null) {
+                            NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+                            withContext(Dispatchers.Main) {
+                                AgentState.careerUpdates.add(
+                                    0, CareerUpdate(
+                                        company = companyName,
+                                        subject = sender,
+                                        category = EmailCategory.LINKEDIN_ACCEPTED,
+                                        personName = personName,
+                                        timestamp = java.text.SimpleDateFormat(
+                                            "HH:mm",
+                                            java.util.Locale.getDefault()
+                                        ).format(java.util.Date())
+                                    )
                                 )
-                            )
+                            }
+
+
                         }
                     }
                 }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
-    }
 
     /*
     PROMPT

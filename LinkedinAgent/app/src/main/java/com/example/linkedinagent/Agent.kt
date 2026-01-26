@@ -20,11 +20,13 @@ object AgentState {
     val careerUpdates = mutableStateListOf<CareerUpdate>()
 }
 
-enum class EmailCategory { REJECTION, INTERVIEW, APPLIED, OTHER, PENDING }
+enum class EmailCategory { REJECTION, INTERVIEW, APPLIED, OTHER, LINKEDIN_ACCEPTED, PENDING }
 
 data class CareerUpdate(
     val company: String,
     val subject: String,
     val category: EmailCategory,
-    val timestamp: String
+    val timestamp: String,
+    val personName: String? = null // New field for LinkedIn connections
+
 )

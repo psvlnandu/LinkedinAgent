@@ -11,7 +11,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.launch
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,14 +23,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 
@@ -168,11 +178,48 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // This list updates automatically when the Service finds an email!
-        LazyColumn(
-            modifier = Modifier
+        LazyColumn(modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
+            val groupedUpdates = AgentState.careerUpdates.groupBy { it.category }
+
+            // 1. APPLIED SECTION
+            item {
+                ExpandableCategorySection(
+                    title = "Applied",
+                    updates = groupedUpdates[EmailCategory.APPLIED] ?: emptyList(),
+                    color = Color.Gray
+                )
+            }
+            // 2. INTERVIEW SECTION
+            item {
+                ExpandableCategorySection(
+                    title = "Interview/Exam",
+                    updates = groupedUpdates[EmailCategory.INTERVIEW] ?: emptyList(),
+                    color = Color(0xFF2196F3) // Blue
+                )
+            }
+            // 3. REJECTION SECTION
+            item {
+                ExpandableCategorySection(
+                    title = "Rejections",
+                    updates = groupedUpdates[EmailCategory.REJECTION] ?: emptyList(),
+                    color = Color(0xFFF44336) // Red
+                )
+            }
+            // 4. LINKEDIN SECTION
+            item {
+                // You can add a specific enum or filter for LinkedIn-related subjects
+                val linkedinUpdates = AgentState.careerUpdates.filter {
+                    it.subject.contains("accepted your invitation", true)
+                }
+                ExpandableCategorySection(
+                    title = "LinkedIn Accepted",
+                    updates = linkedinUpdates,
+                    color = Color(0xFFFFC107) // Yellow
+                )
+            }
             items(AgentState.emailLogs) { log ->
                 Card(
                     Modifier
@@ -409,6 +456,57 @@ fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
     }
 }
 
+
+@Composable
+fun ExpandableCategorySection(
+    title: String,
+    updates: List<CareerUpdate>,
+    color: Color
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                fontWeight = FontWeight.Bold
+            )
+            Text(text = "[${updates.size}]", fontSize = 12.sp, color = Color.Gray)
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = Color.Gray
+            )
+        }
+
+        if (isExpanded) {
+            updates.forEach { update ->
+                val displayText = when (update.category) {
+                    EmailCategory.APPLIED -> "${update.company} Applied"
+                    EmailCategory.REJECTION -> "${update.company} Rejected"
+                    EmailCategory.INTERVIEW -> "${update.company} Scheduled"
+                    else -> update.personName?.let { "$it from ${update.company} accepted" } ?: update.subject
+                }
+
+                Text(
+                    text = "• $displayText",
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 32.dp, bottom = 8.dp)
+                )
+            }
+        }
+        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+    }
+}
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
