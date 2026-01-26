@@ -105,13 +105,20 @@ class EmailProcessor(private val gmailService: Gmail) {
 //                val company = classifyUsingAI(companyPrompt).trim()
                 println("company: $company")
 
+                //convert string to enum type
+                val emailCategory = when (category) {
+                    "REJECTION" -> EmailCategory.REJECTION
+                    "INTERVIEW" -> EmailCategory.INTERVIEW
+                    "APPLIED" -> EmailCategory.APPLIED
+                    else -> EmailCategory.OTHER
+                }
                 // 6. Update State for Compose
                 withContext(Dispatchers.Main) {
                     AgentState.careerUpdates.add(
                         0, CareerUpdate(
                             company = company,
                             subject = subject,
-                            category = category,
+                            category = emailCategory,
                             timestamp = java.text.SimpleDateFormat(
                                 "HH:mm",
                                 java.util.Locale.getDefault()
