@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.provider.SyncStateContract.Helpers.update
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -73,7 +74,6 @@ class MainActivity : ComponentActivity() {
 
 
 }
-
 
 
 @Composable
@@ -168,16 +168,21 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // This list updates automatically when the Service finds an email!
-        LazyColumn(modifier = Modifier
-            .weight(1f)
-            .fillMaxWidth()) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
             items(AgentState.emailLogs) { log ->
-                Card(Modifier
-                    .padding(4.dp)
-                    .fillMaxWidth()) {
-                    Row( modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
+                Card(
+                    Modifier
+                        .padding(4.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically // Align items to center
                     ) {
 
@@ -192,10 +197,16 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                             }
                         )
 
-                        Column(Modifier
-                            .weight(1f) // Takes up remaining space
-                            .padding(horizontal = 8.dp)) {
-                            Text(text = log.message, fontSize = 12.sp, fontWeight = FontWeight.Bold,textDecoration = if (log.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
+                        Column(
+                            Modifier
+                                .weight(1f) // Takes up remaining space
+                                .padding(horizontal = 8.dp)
+                        ) {
+                            Text(
+                                text = log.message,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textDecoration = if (log.isCompleted) TextDecoration.LineThrough else TextDecoration.None,
                                 color = if (log.isCompleted) Color.Gray else Color.Unspecified
                             )
 
@@ -224,6 +235,34 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                                 tint = Color.LightGray.copy(alpha = 0.6f)
                             )
                         }
+
+                    }
+                }
+            }
+            items(AgentState.careerUpdates) { update ->
+                Card(
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .fillMaxWidth()
+                )
+                {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = update.company,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                            Text(text = update.timestamp, fontSize = 10.sp)
+                        }
+                        Text(
+                            text = update.subject,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+
 
                     }
                 }
@@ -263,7 +302,10 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
         ).setApplicationName("LinkedinAgent").build()
     }
 
-suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Triple <String?, String?, String?> = withContext(Dispatchers.IO) {
+suspend fun fetchLinkedInAcceptanceEmail(
+    service: Gmail,
+    personName: String
+): Triple<String?, String?, String?> = withContext(Dispatchers.IO) {
     try {
         // Updated Query:
         // 1. from:invitations@linkedin.com -> precise sender
@@ -271,14 +313,16 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Tri
         // 3. category:social -> targets the correct Gmail tab
         // 4. $personName -> looks for the name specifically
 
-        val query = "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:1h"
+        val query =
+            "from:invitations@linkedin.com category:social \"$personName\" \"accepted your invitation\" newer_than:1h"
 
         val response = service.users().messages().list("me")
             .setQ(query)
             .setMaxResults(1L)
             .execute()
 
-        val messageId = response.messages?.firstOrNull()?.id ?: return@withContext Triple(null, null, null)
+        val messageId =
+            response.messages?.firstOrNull()?.id ?: return@withContext Triple(null, null, null)
 
         // Fetch the full message content
         val fullMessage = service.users().messages().get("me", messageId).execute()
@@ -288,7 +332,11 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Tri
         val emailTime = sdf.format(java.util.Date(fullMessage.internalDate ?: 0L))
 
 
-        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext Triple(null, emailTime, messageId)
+        val htmlBody = extractHtmlFromBody(fullMessage) ?: return@withContext Triple(
+            null,
+            emailTime,
+            messageId
+        )
 
         val contact = parseLinkedInFinal(htmlBody)
 
@@ -304,6 +352,7 @@ suspend fun fetchLinkedInAcceptanceEmail(service: Gmail, personName:String): Tri
         Triple(null, null, null)
     }
 }
+
 /**
  * Helper to dig through Gmail's multi-part message structure to find the HTML string
  */
@@ -329,6 +378,7 @@ fun extractHtmlFromBody(message: com.google.api.services.gmail.model.Message): S
         String(android.util.Base64.decode(it, android.util.Base64.URL_SAFE))
     }
 }
+
 fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
     try {
         // 1. Extract Name from the "Preheader" data attribute or the bold text
@@ -340,9 +390,10 @@ fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
         // Looking for the text following the name in the body table
         // We look for text inside <td> tags that follow the name pattern
         val headlinePattern = """font-size:\s*14px;[^>]*>\s*([^<]+)\s*</td>""".toRegex()
-        val headlineMatch = headlinePattern.findAll(htmlBody).map { it.groups[1]?.value?.trim() }.firstOrNull {
-            !it.isNullOrBlank() && !it.contains("accepted your invitation", true)
-        }
+        val headlineMatch =
+            headlinePattern.findAll(htmlBody).map { it.groups[1]?.value?.trim() }.firstOrNull {
+                !it.isNullOrBlank() && !it.contains("accepted your invitation", true)
+            }
 
         // Clean up HTML entities
         val cleanHeadline = (headlineMatch ?: "Connection")
@@ -357,6 +408,7 @@ fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
         return null
     }
 }
+
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(

@@ -79,22 +79,39 @@ class EmailProcessor(private val gmailService: Gmail) {
                         }"
                     val extractedCompany = classifyUsingAI(companyPrompt).trim()
                     val (pageId, officialName) = NotionUtils.findPageIdForCompany(extractedCompany)
-
+                    println("Company: $extractedCompany, PageID: $pageId, OfficialName: $officialName")
                     when (category) {
                         EmailCategory.APPLIED -> {
                             if (pageId == null) {
-                                NotionUtils.createNotionPage(extractedCompany, "Applied", isoDate)
+                                val success = NotionUtils.createNotionPage(
+                                    extractedCompany,
+                                    "Applied",
+                                    isoDate
+                                )
+                                println("Notion: ${if (success) "Created" else "Failed to Create"} page for $extractedCompany")
+
                             } else {
-                                NotionUtils.updateNotionStatus(pageId, "Applied")
+                                // when pageId is not null
+                                // May be I have the company details in database which I have in row to apply later-"to apply"
+                                val success = NotionUtils.updateNotionStatus(pageId, "Applied")
+                                println("Notion: Updated $extractedCompany to 'Applied'\n$success")
+
                             }
                         }
+
                         EmailCategory.INTERVIEW, EmailCategory.REJECTION -> {
                             if (pageId != null) {
-                                val targetStatus = if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
-                                NotionUtils.updateNotionStatus(pageId, targetStatus)
+                                val targetStatus =
+                                    if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
+                                val success = NotionUtils.updateNotionStatus(pageId, targetStatus)
+                                println("Notion: Updated $extractedCompany to $targetStatus\n$success")
+                            }else{
+                                println("Notion: No page found for $extractedCompany")
                             }
                         }
-                        else -> { /* Do nothing for OTHER */ }
+
+                        else -> { /* Do nothing for OTHER */
+                        }
                     }
 
                     // 6. Update State for Compose

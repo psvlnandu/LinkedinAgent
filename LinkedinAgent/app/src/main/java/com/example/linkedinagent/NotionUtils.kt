@@ -24,9 +24,8 @@ object NotionUtils {
      * @param newStatus The name of the status (e.g., "Accepted", "Interview")
      */
 
-    suspend fun updateNotionStatus(pageId: String, newStatus: String) {
-
-        // Notion API requires a PATCH request to update page properties
+    suspend fun updateNotionStatus(pageId: String, newStatus: String): Boolean = withContext(Dispatchers.IO) {
+    // Notion API requires a PATCH request to update page properties
         val jsonBody = """
         {
             "properties": {
@@ -44,12 +43,16 @@ object NotionUtils {
             .patch(jsonBody.toRequestBody("application/json".toMediaType()))
             .build()
 
-        withContext(Dispatchers.IO) {
-            try {
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) println("Notion Update Failed: ${response.code}")
+        return@withContext try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    println("Notion Update Failed (${response.code}): ${response.body?.string()}")
                 }
-            } catch (e: Exception) { e.printStackTrace() }
+                response.isSuccessful // Returns true if 200 OK
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
     /**
