@@ -114,21 +114,27 @@ object NotionUtils {
         null to null
     }
 
-    suspend fun createNotionPage(companyName: String, status: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun createNotionPage(company: String,
+                                 jobTitle: String,
+                                 appliedDate: String): Boolean = withContext(Dispatchers.IO) {
         val jsonBody = """
-        {
-            "parent": { "database_id": "${BuildConfig.DATABASE_ID}" },
-            "properties": {
-                "Company": {
-                    "title": [
-                        { "text": { "content": "$companyName" } }
-                    ]
-                },
-                "Status": {
-                    "status": { "name": "$status" }
-                }
+    {
+        "parent": { "database_id": "${BuildConfig.DATABASE_ID}" },
+        "properties": {
+            "Company": {
+                "title": [{ "text": { "content": "$company" } }]
+            },
+            "Title": {
+                "rich_text": [{ "text": { "content": "$jobTitle" } }]
+            },
+            "Status": {
+                "status": { "name": "Applied" }
+            },
+            "Date Applied": {
+                "date": { "start": "$appliedDate" }
             }
         }
+    }
     """.trimIndent()
 
         val request = Request.Builder()
