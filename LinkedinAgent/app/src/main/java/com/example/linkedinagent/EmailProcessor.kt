@@ -1,4 +1,5 @@
 package com.example.linkedinagent
+
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
@@ -12,14 +13,17 @@ import org.json.JSONObject
  * The Engine responsible for the Fetch -> Classify -> State workflow
  */
 private val GEMINI_API_KEY = BuildConfig.GEMINI_API_KEY
+
 class EmailProcessor(private val gmailService: Gmail) {
     init {
         println("Gemini initialized with key length: ${GEMINI_API_KEY.length}")
     }
+
     private val geminiModel = GenerativeModel(
         modelName = "gemini-2.5-flash",
-        apiKey =GEMINI_API_KEY
+        apiKey = GEMINI_API_KEY
     )
+
     suspend fun processMessage(messageId: String) = withContext(Dispatchers.IO) {
         try {
             // 1. Fetch Metadata (Optimization: Only get Subject and From)
@@ -38,101 +42,89 @@ class EmailProcessor(private val gmailService: Gmail) {
             } else {
 
 
+                val subjectPrompt =
+                    "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
+                val isJobRelated =
+                    classifyUsingAI(subjectPrompt).contains("TRUE", ignoreCase = true)
+                //println("isJobRelated: $isJobRelated")
 
-            val subjectPrompt =
-                "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
-            val isJobRelated = classifyUsingAI(subjectPrompt).contains("TRUE", ignoreCase = true)
-            //println("isJobRelated: $isJobRelated")
+                if (isJobRelated) {
 
-            if (isJobRelated) {
-
-
-                val fullMessage = gmailService.users().messages().get("me", messageId).execute()
-                val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
+                    val fullMessage = gmailService.users().messages().get("me", messageId).execute()
+                    val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 //                println("body: $body")
 
-                // Get the actual internal date from Gmail and convert to ISO 8601
-                val emailMillis = fullMessage.internalDate ?: System.currentTimeMillis()
-                val isoDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(emailMillis))
+                    // Get the actual internal date from Gmail and convert to ISO 8601
+                    val emailMillis = fullMessage.internalDate ?: System.currentTimeMillis()
+                    val isoDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        .format(java.util.Date(emailMillis))
 
-                val extractionPrompt = """
-                    Analyze this job application email.
-                    Extract the following and return strictly as JSON:
-                    1. "category": one of (APPLIED, REJECTION, INTERVIEW, OTHER)
-                    2. "company": the name of the company
-                    3. "role": the job title or position (e.g., SWE III, Software Engineer)
-                    
-                    Email Body: ${body.take(1500)}
-                """.trimIndent()
+                    val extractionPrompt = """
+                            Read this email body and classify it into one word: 
+                            'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. 
+                             Body: ${body.take(1000)}
+                        """.trimIndent()
+                    val categoryResult = classifyUsingAI(extractionPrompt).uppercase()
+                    println("categoryResult: $categoryResult")
 
-                val aiJson = classifyUsingAI(extractionPrompt)
-                val parsed = JSONObject(aiJson)
-
-                val category = parsed.getString("category")
-                val company = parsed.getString("company")
-                val jobTitle = parsed.getString("role")
-
-                if (category == "APPLIED") {
-                    val (pageId, _) = NotionUtils.findPageIdForCompany(company)
-
-                    if (pageId == null) {
-                        // Company not in DB? Create it!
-                        NotionUtils.createNotionPage(company, jobTitle, isoDate)
-                    } else {
-                        // Already there? Just ensure status is 'Applied'
-                        NotionUtils.updateNotionStatus(pageId, "Applied")
+                    val category = when {
+                        categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
+                        categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
+                        categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
+                        else -> EmailCategory.OTHER
                     }
-                }
+                    val companyPrompt =
+                        "Extract only the company name from this text if found. Subject: $subject Body: ${
+                            body.take(1000)
+                        }"
+                    val company = classifyUsingAI(companyPrompt).trim()
+                    val (pageId, officialName) = NotionUtils.findPageIdForCompany(company)
 
-//                val bodyPrompt ="Read this email body and classify it into one word: \n" +
-//                        "    'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. \n" +
-//                        "    'APPLIED' is for 'Application Received' or 'Thank you for applying' emails.\n" +
-//                        "    Body: \$body\n" +
-//                        "\"\"\".trimIndent()"
-//                val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
-//                println("categoryResult: $categoryResult")
-//                val category = when {
-//                    categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
-//                    categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
-//                    categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
-//                    else -> EmailCategory.OTHER
-//                }
+                    when {
 
-//                val companyPrompt =
-//                    "Extract only the company name from this text. Subject: $subject Body: ${
-//                        body.take(1000)
-//                    }"
-//                val company = classifyUsingAI(companyPrompt).trim()
-                println("company: $company")
+                        categoryResult.contains("APPLIED") -> {
+                            if (pageId == null) NotionUtils.createNotionPage(
+                                company,
+                                "jobTitle", //later
+                                isoDate
+                            )
+                            else NotionUtils.updateNotionStatus(pageId, "Applied")
+                        }
 
-                //convert string to enum type
-                val emailCategory = when (category) {
-                    "REJECTION" -> EmailCategory.REJECTION
-                    "INTERVIEW" -> EmailCategory.INTERVIEW
-                    "APPLIED" -> EmailCategory.APPLIED
-                    else -> EmailCategory.OTHER
-                }
-                // 6. Update State for Compose
-                withContext(Dispatchers.Main) {
-                    AgentState.careerUpdates.add(
-                        0, CareerUpdate(
-                            company = company,
-                            subject = subject,
-                            category = emailCategory,
-                            timestamp = java.text.SimpleDateFormat(
-                                "HH:mm",
-                                java.util.Locale.getDefault()
-                            ).format(java.util.Date())
+                        categoryResult.contains("INTERVIEW") || categoryResult.contains("REJECTION") -> {
+
+                            if (pageId != null) {
+                                val targetStatus =
+                                    if (categoryResult.contains("INTERVIEW")) "Exam Scheduled" else "Rejected"
+                                NotionUtils.updateNotionStatus(pageId, targetStatus)
+                            }
+                        }
+                    }
+
+                    // 6. Update State for Compose
+                    withContext(Dispatchers.Main) {
+                        AgentState.careerUpdates.add(
+                            0, CareerUpdate(
+                                company = company,
+                                subject = subject,
+                                category = category,
+                                timestamp = java.text.SimpleDateFormat(
+                                    "HH:mm",
+                                    java.util.Locale.getDefault()
+                                ).format(java.util.Date())
+                            )
                         )
-                    )
+                    }
+
+
                 }
             }
-        }
 
         } catch (e: Exception) {
             e.printStackTrace()
         }
     }
+
     suspend fun processLinkedInAcceptance(messageId: String) = withContext(Dispatchers.IO) {
         try {
             // 1. Fetch the actual email content directly using the messageId
@@ -165,13 +157,18 @@ class EmailProcessor(private val gmailService: Gmail) {
                         NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
 
                         withContext(Dispatchers.Main) {
-                            AgentState.emailLogs.add(0, AgentLog(
-                                message = "CONNECTED: $personName @ ${officialName ?: companyName}",
-                                notificationTime = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
-                                emailTime = "LinkedIn Sync",
-                                messageId = messageId,
-                                isCompleted = true
-                            ))
+                            AgentState.emailLogs.add(
+                                0, AgentLog(
+                                    message = "CONNECTED: $personName @ ${officialName ?: companyName}",
+                                    notificationTime = java.text.SimpleDateFormat(
+                                        "HH:mm",
+                                        java.util.Locale.getDefault()
+                                    ).format(java.util.Date()),
+                                    emailTime = "LinkedIn Sync",
+                                    messageId = messageId,
+                                    isCompleted = true
+                                )
+                            )
                         }
                     }
                 }
@@ -180,6 +177,7 @@ class EmailProcessor(private val gmailService: Gmail) {
             e.printStackTrace()
         }
     }
+
     /*
     PROMPT
         SubjectClassify : Read the Subject Line & return true if it sounds like candidate application is moved further
