@@ -44,9 +44,9 @@ class LinkedInListenerService : NotificationListenerService() {
                 else -> title.trim()
 
             }
-            if (nameToSearch.isNotEmpty()) {
-                triggerGmailSearch(nameToSearch)
-            }
+//            if (nameToSearch.isNotEmpty()) {
+////                triggerGmailSearch(nameToSearch)
+//            }
 
 
         } else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
