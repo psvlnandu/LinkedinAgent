@@ -77,35 +77,31 @@ class EmailProcessor(private val gmailService: Gmail) {
                         "Extract only the company name from this text if found. Subject: $subject Body: ${
                             body.take(1000)
                         }"
-                    val company = classifyUsingAI(companyPrompt).trim()
-                    val (pageId, officialName) = NotionUtils.findPageIdForCompany(company)
+                    val extractedCompany = classifyUsingAI(companyPrompt).trim()
+                    val (pageId, officialName) = NotionUtils.findPageIdForCompany(extractedCompany)
 
-                    when {
-
-                        categoryResult.contains("APPLIED") -> {
-                            if (pageId == null) NotionUtils.createNotionPage(
-                                company,
-                                "jobTitle", //later
-                                isoDate
-                            )
-                            else NotionUtils.updateNotionStatus(pageId, "Applied")
+                    when (category) {
+                        EmailCategory.APPLIED -> {
+                            if (pageId == null) {
+                                NotionUtils.createNotionPage(extractedCompany, "Applied", isoDate)
+                            } else {
+                                NotionUtils.updateNotionStatus(pageId, "Applied")
+                            }
                         }
-
-                        categoryResult.contains("INTERVIEW") || categoryResult.contains("REJECTION") -> {
-
+                        EmailCategory.INTERVIEW, EmailCategory.REJECTION -> {
                             if (pageId != null) {
-                                val targetStatus =
-                                    if (categoryResult.contains("INTERVIEW")) "Exam Scheduled" else "Rejected"
+                                val targetStatus = if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
                                 NotionUtils.updateNotionStatus(pageId, targetStatus)
                             }
                         }
+                        else -> { /* Do nothing for OTHER */ }
                     }
 
                     // 6. Update State for Compose
                     withContext(Dispatchers.Main) {
                         AgentState.careerUpdates.add(
                             0, CareerUpdate(
-                                company = company,
+                                company = extractedCompany,
                                 subject = subject,
                                 category = category,
                                 timestamp = java.text.SimpleDateFormat(
