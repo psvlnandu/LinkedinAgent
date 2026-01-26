@@ -56,40 +56,38 @@ class LinkedInListenerService : NotificationListenerService() {
 
 
             scope.launch {
+                val context = applicationContext
+                val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                val accountEmail = prefs.getString("user_email", null)
 
-                scope.launch {
-                    val context = applicationContext
-                    val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-                    val accountEmail = prefs.getString("user_email", null)
+                if (accountEmail != null) {
+                    try {
+                        val gmailService = getGmailService(context, accountEmail)
 
-                    if (accountEmail != null) {
-                        try {
-                            val gmailService = getGmailService(context, accountEmail)
+                        // We search for the message based on the subject to get the ID
+                        // so the processor can do the full fetch.
+                        val query = "$title newer_than:1h"
 
-                            // We search for the message based on the subject to get the ID
-                            // so the processor can do the full fetch.
-                            val query = "$title newer_than:1h"
-
-                            val response = gmailService.users().messages().list("me")
-                                .setQ(query)
-                                .setMaxResults(1L)
-                                .execute()
+                        val response = gmailService.users().messages().list("me")
+                            .setQ(query)
+                            .setMaxResults(1L)
+                            .execute()
 //                            println("response:$response")
-                            val mId = response.messages?.firstOrNull()?.id
-                            println("Gmail Trigger: $mId")
+                        val mId = response.messages?.firstOrNull()?.id
+                        println("Gmail Trigger: $mId")
 
-                            if (mId != null) {
+                        if (mId != null) {
 //                                println("Processing Email...")
-                                val processor = EmailProcessor(gmailService)
-                                // This now contains your 2-step AI Subject & Body check
-                                processor.processMessage(mId)
-                            }
-                        } catch (e: Exception) {
-                            println("Gmail Trigger Error: ${e.message}")
+                            val processor = EmailProcessor(gmailService)
+                            // This now contains your 2-step AI Subject & Body check
+                            processor.processMessage(mId)
                         }
+                    } catch (e: Exception) {
+                        println("Gmail Trigger Error: ${e.message}")
                     }
                 }
             }
+
         }
 
     }
