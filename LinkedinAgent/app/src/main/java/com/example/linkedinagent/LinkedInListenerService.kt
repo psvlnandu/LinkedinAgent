@@ -52,9 +52,7 @@ class LinkedInListenerService : NotificationListenerService() {
         } else if (packageName == "com.whatsapp" || packageName == "com.whatsapp.w4b") {
             // later
 //            triggerGmailSearch("Varun ")
-        }
-        else if (packageName == "com.google.android.gm") {
-
+        } else if (packageName == "com.google.android.gm") {
 
 
             scope.launch {
@@ -173,10 +171,10 @@ class LinkedInListenerService : NotificationListenerService() {
                 "filter": {
                     "or": [
                         ${
-                            keywords.joinToString(",") { keyword ->
-                                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
-                            }
-                        }
+            keywords.joinToString(",") { keyword ->
+                """{ "property": "Company", "title": { "contains": "$keyword" } }"""
+            }
+        }
                     ]
                 }
             }

@@ -20,7 +20,7 @@ object AgentState {
     val careerUpdates = mutableStateListOf<CareerUpdate>()
 }
 
-enum class EmailCategory { REJECTION, INTERVIEW, OTHER, PENDING }
+enum class EmailCategory { REJECTION, INTERVIEW, APPLIED, OTHER, PENDING }
 
 data class CareerUpdate(
     val company: String,

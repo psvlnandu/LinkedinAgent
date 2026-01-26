@@ -114,4 +114,37 @@ object NotionUtils {
         null to null
     }
 
+    suspend fun createNotionPage(companyName: String, status: String): Boolean = withContext(Dispatchers.IO) {
+        val jsonBody = """
+        {
+            "parent": { "database_id": "${BuildConfig.DATABASE_ID}" },
+            "properties": {
+                "Company": {
+                    "title": [
+                        { "text": { "content": "$companyName" } }
+                    ]
+                },
+                "Status": {
+                    "status": { "name": "$status" }
+                }
+            }
+        }
+    """.trimIndent()
+
+        val request = Request.Builder()
+            .url("https://api.notion.com/v1/pages")
+            .addHeader("Authorization", "Bearer ${BuildConfig.NOTION_TOKEN}")
+            .addHeader("Notion-Version", "2022-06-28")
+            .addHeader("Content-Type", "application/json")
+            .post(jsonBody.toRequestBody("application/json".toMediaType()))
+            .build()
+
+        return@withContext try {
+            client.newCall(request).execute().use { it.isSuccessful }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+
+        }
+    }
 }

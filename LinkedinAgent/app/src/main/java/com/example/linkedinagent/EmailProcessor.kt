@@ -49,13 +49,17 @@ class EmailProcessor(private val gmailService: Gmail) {
                 val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 //                println("body: $body")
 
-                val bodyPrompt =
-                    "Read the Email body and return exactly one word: 'REJECTION', 'INTERVIEW', or 'OTHER'. Body: $body"
+                val bodyPrompt ="Read this email body and classify it into one word: \n" +
+                        "    'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. \n" +
+                        "    'APPLIED' is for 'Application Received' or 'Thank you for applying' emails.\n" +
+                        "    Body: \$body\n" +
+                        "\"\"\".trimIndent()"
                 val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
                 println("categoryResult: $categoryResult")
                 val category = when {
                     categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
                     categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
+                    categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
                     else -> EmailCategory.OTHER
                 }
 
@@ -95,7 +99,22 @@ class EmailProcessor(private val gmailService: Gmail) {
                         // You'll first need to find the Page ID for that company
 
                         val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
-//                    println("success?$success")
+                        println("notionStatus Success ?$success")
+                    }
+                    else if(category == EmailCategory.APPLIED){
+                        // NEW ROW: Create the page if it's an application confirmation
+                        val success = NotionUtils.createNotionPage(company, "Applied")
+                        if (success) {
+                            withContext(Dispatchers.Main) {
+                                AgentState.emailLogs.add(0, AgentLog(
+                                    message = "NEW ENTRY: Added $company to Tracker (Applied)",
+                                    notificationTime = "",
+                                    emailTime = "Notion Create",
+                                    messageId = messageId,
+                                    isCompleted = true
+                                ))
+                            }
+                        }
                     }
                 }
             }
