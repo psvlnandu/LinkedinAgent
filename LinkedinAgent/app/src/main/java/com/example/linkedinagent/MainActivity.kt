@@ -68,6 +68,8 @@ import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
+import com.example.linkedinagent.Utils.extractHtmlFromBody
+import com.example.linkedinagent.Utils.parseLinkedInFinal
 
 class MainActivity : ComponentActivity() {
 
@@ -399,63 +401,6 @@ suspend fun fetchLinkedInAcceptanceEmail(
         Triple(null, null, null)
     }
 }
-
-/**
- * Helper to dig through Gmail's multi-part message structure to find the HTML string
- */
-
-fun extractHtmlFromBody(message: com.google.api.services.gmail.model.Message): String? {
-    val payload = message.payload
-
-    // Recursive function to find text/html part in multipart emails
-    fun findHtml(part: com.google.api.services.gmail.model.MessagePart?): String? {
-        if (part?.mimeType == "text/html") {
-            return part.body?.data?.let {
-                String(android.util.Base64.decode(it, android.util.Base64.URL_SAFE))
-            }
-        }
-        part?.parts?.forEach { subPart ->
-            val result = findHtml(subPart)
-            if (result != null) return result
-        }
-        return null
-    }
-
-    return findHtml(payload) ?: payload.body?.data?.let {
-        String(android.util.Base64.decode(it, android.util.Base64.URL_SAFE))
-    }
-}
-
-fun parseLinkedInFinal(htmlBody: String): LinkedInContact? {
-    try {
-        // 1. Extract Name from the "Preheader" data attribute or the bold text
-
-        val namePattern = """See\s+([^'’\s]+)\s*[’']s""".toRegex()
-        val name = namePattern.find(htmlBody)?.groups?.get(1)?.value?.trim() ?: "Unknown"
-
-        // 2. Extract Headline: LinkedIn uses a very specific style for the headline below the photo
-        // Looking for the text following the name in the body table
-        // We look for text inside <td> tags that follow the name pattern
-        val headlinePattern = """font-size:\s*14px;[^>]*>\s*([^<]+)\s*</td>""".toRegex()
-        val headlineMatch =
-            headlinePattern.findAll(htmlBody).map { it.groups[1]?.value?.trim() }.firstOrNull {
-                !it.isNullOrBlank() && !it.contains("accepted your invitation", true)
-            }
-
-        // Clean up HTML entities
-        val cleanHeadline = (headlineMatch ?: "Connection")
-            .replace("&amp;", "&")
-            .replace("&quot;", "\"")
-            .replace("&#39;", "'")
-            .replace("&nbsp;", " ")
-            .trim()
-
-        return LinkedInContact(name, cleanHeadline)
-    } catch (e: Exception) {
-        return null
-    }
-}
-
 
 @Composable
 fun ExpandableCategorySection(

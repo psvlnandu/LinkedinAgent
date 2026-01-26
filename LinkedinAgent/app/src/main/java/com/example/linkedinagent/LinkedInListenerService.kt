@@ -53,8 +53,6 @@ class LinkedInListenerService : NotificationListenerService() {
             // later
 //            triggerGmailSearch("Varun ")
         } else if (packageName == "com.google.android.gm") {
-
-
             scope.launch {
                 val context = applicationContext
                 val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)

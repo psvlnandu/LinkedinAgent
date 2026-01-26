@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 
 // Ensure this matches your package name exactly
 import com.example.linkedinagent.BuildConfig
+import com.example.linkedinagent.Utils.extractHtmlFromBody
 import org.json.JSONObject
 
 /**
