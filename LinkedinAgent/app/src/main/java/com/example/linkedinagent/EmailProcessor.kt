@@ -6,6 +6,8 @@ import kotlinx.coroutines.withContext
 
 // Ensure this matches your package name exactly
 import com.example.linkedinagent.BuildConfig
+import org.json.JSONObject
+
 /**
  * The Engine responsible for the Fetch -> Classify -> State workflow
  */
@@ -49,25 +51,58 @@ class EmailProcessor(private val gmailService: Gmail) {
                 val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 //                println("body: $body")
 
-                val bodyPrompt ="Read this email body and classify it into one word: \n" +
-                        "    'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. \n" +
-                        "    'APPLIED' is for 'Application Received' or 'Thank you for applying' emails.\n" +
-                        "    Body: \$body\n" +
-                        "\"\"\".trimIndent()"
-                val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
-                println("categoryResult: $categoryResult")
-                val category = when {
-                    categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
-                    categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
-                    categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
-                    else -> EmailCategory.OTHER
+                // Get the actual internal date from Gmail and convert to ISO 8601
+                val emailMillis = fullMessage.internalDate ?: System.currentTimeMillis()
+                val isoDate = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date(emailMillis))
+
+                val extractionPrompt = """
+                    Analyze this job application email.
+                    Extract the following and return strictly as JSON:
+                    1. "category": one of (APPLIED, REJECTION, INTERVIEW, OTHER)
+                    2. "company": the name of the company
+                    3. "role": the job title or position (e.g., SWE III, Software Engineer)
+                    
+                    Email Body: ${body.take(1500)}
+                """.trimIndent()
+
+                val aiJson = classifyUsingAI(extractionPrompt)
+                val parsed = JSONObject(aiJson)
+
+                val category = parsed.getString("category")
+                val company = parsed.getString("company")
+                val jobTitle = parsed.getString("role")
+
+                if (category == "APPLIED") {
+                    val (pageId, _) = NotionUtils.findPageIdForCompany(company)
+
+                    if (pageId == null) {
+                        // Company not in DB? Create it!
+                        NotionUtils.createNotionPage(company, jobTitle, isoDate)
+                    } else {
+                        // Already there? Just ensure status is 'Applied'
+                        NotionUtils.updateNotionStatus(pageId, "Applied")
+                    }
                 }
 
-                val companyPrompt =
-                    "Extract only the company name from this text. Subject: $subject Body: ${
-                        body.take(1000)
-                    }"
-                val company = classifyUsingAI(companyPrompt).trim()
+//                val bodyPrompt ="Read this email body and classify it into one word: \n" +
+//                        "    'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. \n" +
+//                        "    'APPLIED' is for 'Application Received' or 'Thank you for applying' emails.\n" +
+//                        "    Body: \$body\n" +
+//                        "\"\"\".trimIndent()"
+//                val categoryResult = classifyUsingAI(bodyPrompt).uppercase()
+//                println("categoryResult: $categoryResult")
+//                val category = when {
+//                    categoryResult.contains("REJECTION") -> EmailCategory.REJECTION
+//                    categoryResult.contains("INTERVIEW") -> EmailCategory.INTERVIEW
+//                    categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
+//                    else -> EmailCategory.OTHER
+//                }
+
+//                val companyPrompt =
+//                    "Extract only the company name from this text. Subject: $subject Body: ${
+//                        body.take(1000)
+//                    }"
+//                val company = classifyUsingAI(companyPrompt).trim()
                 println("company: $company")
 
                 // 6. Update State for Compose
@@ -83,39 +118,6 @@ class EmailProcessor(private val gmailService: Gmail) {
                             ).format(java.util.Date())
                         )
                     )
-                }
-                val (pageId, officialName) = NotionUtils.findPageIdForCompany(company)
-                println("pageId: $pageId, officialName: $officialName")
-                if (pageId != null) {
-                    //   2. Map the AI result to your Notion Status Tags
-                    val notionStatus = when (category) {
-                        EmailCategory.REJECTION -> "Rejected"
-                        EmailCategory.INTERVIEW -> "Exam Scheduled"
-                        else -> null
-                    }
-
-
-                    if (notionStatus != null) {
-                        // You'll first need to find the Page ID for that company
-
-                        val success = NotionUtils.updateNotionStatus(pageId, notionStatus)
-                        println("notionStatus Success ?$success")
-                    }
-                    else if(category == EmailCategory.APPLIED){
-                        // NEW ROW: Create the page if it's an application confirmation
-                        val success = NotionUtils.createNotionPage(company, "Applied")
-                        if (success) {
-                            withContext(Dispatchers.Main) {
-                                AgentState.emailLogs.add(0, AgentLog(
-                                    message = "NEW ENTRY: Added $company to Tracker (Applied)",
-                                    notificationTime = "",
-                                    emailTime = "Notion Create",
-                                    messageId = messageId,
-                                    isCompleted = true
-                                ))
-                            }
-                        }
-                    }
                 }
             }
         }
