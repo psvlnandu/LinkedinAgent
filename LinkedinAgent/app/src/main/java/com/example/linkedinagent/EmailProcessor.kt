@@ -35,7 +35,7 @@ class EmailProcessor(private val gmailService: Gmail) {
 
             val subject = metadata.payload.headers.find { it.name == "Subject" }?.value ?: ""
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""
-
+            println("Subject: $subject, Sender: $sender")
             val isLinkedInAcceptance =
                 subject.contains("accepted your invitation", ignoreCase = true)
             if (isLinkedInAcceptance) {
@@ -76,8 +76,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                         else -> EmailCategory.OTHER
                     }
                     val companyPrompt =
-                        "Extract only the company name from this text if found. Subject: $subject Body: ${
-                            body.take(1000)
+                        "Extract only the company name from this text if found. Body: ${body.take(1000)
                         }"
                     val extractedCompany = classifyUsingAI(companyPrompt).trim()
                     val (pageId, officialName) = NotionUtils.findPageIdForCompany(extractedCompany)

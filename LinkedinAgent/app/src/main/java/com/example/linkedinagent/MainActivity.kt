@@ -212,13 +212,10 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             }
             // 4. LINKEDIN SECTION
             item {
-                // You can add a specific enum or filter for LinkedIn-related subjects
-                val linkedinUpdates = AgentState.careerUpdates.filter {
-                    it.subject.contains("accepted your invitation", true)
-                }
+
                 ExpandableCategorySection(
                     title = "LinkedIn Accepted",
-                    updates = linkedinUpdates,
+                    updates = groupedUpdates[EmailCategory.LINKEDIN_ACCEPTED]?: emptyList(),
                     color = Color(0xFFFFC107) // Yellow
                 )
             }
@@ -439,7 +436,8 @@ fun ExpandableCategorySection(
                     EmailCategory.APPLIED -> "${update.company} Applied"
                     EmailCategory.REJECTION -> "${update.company} Rejected"
                     EmailCategory.INTERVIEW -> "${update.company} Scheduled"
-                    else -> update.personName?.let { "$it from ${update.company} accepted" } ?: update.subject
+                    EmailCategory.LINKEDIN_ACCEPTED-> update.personName?.let { "$it from ${update.company} accepted" } ?: update.subject
+                    else -> ""
                 }
 
                 Text(
