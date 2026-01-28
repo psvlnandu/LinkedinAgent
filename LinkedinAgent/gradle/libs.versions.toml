@@ -16,10 +16,11 @@ playServicesAuth = "21.1.1"
 googleApiClient = "1.33.0"
 googleApiServicesGmail = "v1-rev20231023-2.0.0"
 generativeai = "0.9.0"
-firebaseMessagingKtx = "25.0.1"
+firebaseMessagingKtx = "24.1.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 google-firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

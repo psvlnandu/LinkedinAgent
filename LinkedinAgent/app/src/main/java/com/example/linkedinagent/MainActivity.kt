@@ -68,8 +68,7 @@ import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
-import com.example.linkedinagent.Utils.extractHtmlFromBody
-import com.example.linkedinagent.Utils.parseLinkedInFinal
+
 
 class MainActivity : ComponentActivity() {
 

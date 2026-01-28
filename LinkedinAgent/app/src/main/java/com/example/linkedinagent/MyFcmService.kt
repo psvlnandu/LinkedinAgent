@@ -16,12 +16,13 @@ class MyFcmService : FirebaseMessagingService() {
         Failure of a child coroutine does not cancel the parent or its other children (siblings).
         Independent operations where one failure shouldn't affect others (e.g., loading different UI elements on a screen).
         Used with CoroutineScope(SupervisorJob()) for long-lived scopes or within a supervisorScope { } block for temporary use.
+    Dispatchers.IO: Tells the phone: "Do this work on the background thread, not the UI thread," so the screen doesn't freeze.
      */
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
+    // Wake up call: When your Paperboy (Backend) rings the doorbell (FCM), he hands over a historyId.
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // The 'historyId' comes from your Cloud Pub/Sub -> FCM backend push
         val historyId = remoteMessage.data["historyId"]
 
         scope.launch {
@@ -34,18 +35,16 @@ class MyFcmService : FirebaseMessagingService() {
                     val gmailService = getGmailService(context, accountEmail)
 
                     // 1. Get the list of changes since the last historyId
-                    val historyResponse = gmailService.users().history()
-                        .list("me")
-                        .setStartHistoryId(historyId.toBigInteger())
-                        .execute()
+                    val historyResponse = gmailService.users().history().list("me")
+                        .setStartHistoryId(historyId.toBigInteger()).execute()
 
-                    // 2. Extract the new message IDs from the history
-                    val messageIds = historyResponse.history
-                        ?.flatMap { it.messagesAdded ?: emptyList() }
-                        ?.map { it.message.id }
-                        ?.distinct()
+                    // 2. Extract the new message IDs
+                    val messageIds =
+                        historyResponse.history?.flatMap { it.messagesAdded ?: emptyList() }
+                            ?.mapNotNull { it.message.id } // mapNotNull is safer
+                            ?.distinct()
 
-                    // 3. Process each new message
+                    // 3. Process each unique new message
                     messageIds?.forEach { mId ->
                         println("Gmail FCM Trigger: $mId")
                         val processor = EmailProcessor(gmailService)
