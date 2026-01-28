@@ -8,6 +8,15 @@ import kotlinx.coroutines.*
 
 class MyFcmService : FirebaseMessagingService() {
 
+    /*
+    Regular job:
+        Failure of a child coroutine cancels the parent and all other children (siblings).
+        Used by default in coroutineScope
+    SupervisorJob:
+        Failure of a child coroutine does not cancel the parent or its other children (siblings).
+        Independent operations where one failure shouldn't affect others (e.g., loading different UI elements on a screen).
+        Used with CoroutineScope(SupervisorJob()) for long-lived scopes or within a supervisorScope { } block for temporary use.
+     */
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
