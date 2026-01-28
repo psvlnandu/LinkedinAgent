@@ -72,14 +72,15 @@ class LinkedInListenerService : NotificationListenerService() {
                             .execute()
 //                            println("response:$response")
                         val mId = response.messages?.firstOrNull()?.id
-                        println("Gmail Trigger: $mId")
 
-                        if (mId != null) {
-//                                println("Processing Email...")
-                            val processor = EmailProcessor(gmailService)
-                            // This now contains your 2-step AI Subject & Body check
-                            processor.processMessage(mId)
-                        }
+//                        println("Gmail Trigger: $mId")
+
+//                        if (mId != null) {
+////                                println("Processing Email...")
+//                            val processor = EmailProcessor(gmailService)
+//                            // This now contains your 2-step AI Subject & Body check
+//                            processor.processMessage(mId)
+//                        }
                     } catch (e: Exception) {
                         println("Gmail Trigger Error: ${e.message}")
                     }

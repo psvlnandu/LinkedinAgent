@@ -45,6 +45,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +69,9 @@ import com.google.api.services.gmail.Gmail
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.core.content.edit
+import com.example.linkedinagent.Utils.startGmailWatch
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -89,11 +93,27 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun PermissionScreen(context: Context = LocalContext.current) {
+    val scope = rememberCoroutineScope()
+
     // state to track
     var signedInAccount by remember {
         mutableStateOf<com.google.android.gms.auth.api.signin.GoogleSignInAccount?>(
             null
         )
+    }
+//    Helper to trigger the watch
+    fun triggerWatch(account: GoogleSignInAccount) {
+        scope.launch {
+            val email = account.email ?: return@launch
+            try {
+                val service = getGmailService(context, email)
+                // Use your specific project/topic path
+                startGmailWatch(service, "projects/com.package.linkedinagent/topics/gmail-notifications")
+                println("Gmail Watch successfully started for $email")
+            } catch (e: Exception) {
+                println("Error starting watch: ${e.message}")
+            }
+        }
     }
 
     val launcher = rememberLauncherForActivityResult(
@@ -101,14 +121,16 @@ fun PermissionScreen(context: Context = LocalContext.current) {
     ) { result ->
         val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
         try {
-            signedInAccount = task.getResult(ApiException::class.java)
+            val account = task.getResult(ApiException::class.java)
+            signedInAccount = account
 
-            // SUCCESS: You have the account here
-            println("Signed in as: ${signedInAccount?.email}")
+            // Save to Prefs
+            context.getSharedPreferences("prefs", Context.MODE_PRIVATE).edit {
+                putString("user_email", account.email)
+            }
 
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-            prefs.edit { putString("user_email", signedInAccount?.email) }
-
+            // TRIGGER WATCH HERE (Manual Sign-in)
+            triggerWatch(account)
 
         } catch (e: ApiException) {
             println("Signin failed ; $e")
@@ -235,6 +257,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         }
     }
 }
+
 
 /*
 Gmail Service Helper:
