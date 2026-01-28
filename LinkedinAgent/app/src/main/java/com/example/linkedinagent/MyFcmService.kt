@@ -1,29 +1,57 @@
 package com.example.linkedinagent
+// Corrected import
 
+import android.content.Context
 import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.*
 
 class MyFcmService : FirebaseMessagingService() {
+
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(Dispatchers.IO + job)
+
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
-        // 1. Extract the historyId if your backend sent it
+        // The 'historyId' comes from your Cloud Pub/Sub -> FCM backend push
         val historyId = remoteMessage.data["historyId"]
 
-        // 2. Trigger your existing EmailProcessor
-        // Since we are in a background service, use a Coroutine
-        CoroutineScope(Dispatchers.IO).launch {
-            val gmailService = getGmailService(applicationContext, getSavedEmail())
+        scope.launch {
+            val context = applicationContext
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            val accountEmail = prefs.getString("user_email", null)
 
-            // Fetch only the changes since the last historyId
-            val historyResponse = gmailService.users().history()
-                .list("me")
-                .setStartHistoryId(historyId?.toBigInteger())
-                .execute()
+            if (accountEmail != null && historyId != null) {
+                try {
+                    val gmailService = getGmailService(context, accountEmail)
 
-            historyResponse.history?.forEach { historyItem ->
-                historyItem.messagesAdded?.forEach { msgAdded ->
-                    val processor = EmailProcessor(gmailService)
-                    processor.processMessage(msgAdded.message.id)
+                    // 1. Get the list of changes since the last historyId
+                    val historyResponse = gmailService.users().history()
+                        .list("me")
+                        .setStartHistoryId(historyId.toBigInteger())
+                        .execute()
+
+                    // 2. Extract the new message IDs from the history
+                    val messageIds = historyResponse.history
+                        ?.flatMap { it.messagesAdded ?: emptyList() }
+                        ?.map { it.message.id }
+                        ?.distinct()
+
+                    // 3. Process each new message
+                    messageIds?.forEach { mId ->
+                        println("Gmail FCM Trigger: $mId")
+                        val processor = EmailProcessor(gmailService)
+                        processor.processMessage(mId)
+                    }
+
+                } catch (e: Exception) {
+                    println("Gmail FCM Error: ${e.message}")
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        job.cancel()
     }
 }

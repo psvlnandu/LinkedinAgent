@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin") version "2.0.1"
+    alias(libs.plugins.google.services)
 }
 
 
@@ -42,7 +43,8 @@ android {
         buildConfig = true
     }
 
-    composeOptions {kotlinCompilerExtensionVersion = "1.5.1" // Match this to your Compose/Kotlin version
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.1" // Match this to your Compose/Kotlin version
     }
     packaging {
         resources {
@@ -81,5 +83,6 @@ dependencies {
     implementation(libs.google.api.services.gmail)
     implementation(libs.okhttp)
 
-
+    implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+    implementation(libs.google.firebase.messaging)
 }
