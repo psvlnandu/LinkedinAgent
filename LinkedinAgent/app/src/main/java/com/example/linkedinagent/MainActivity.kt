@@ -71,6 +71,7 @@ import kotlinx.coroutines.withContext
 import androidx.core.content.edit
 import com.example.linkedinagent.Utils.startGmailWatch
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
 
@@ -101,6 +102,11 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             null
         )
     }
+    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+        if (!task.isSuccessful) return@addOnCompleteListener
+        val token = task.result
+        println("My FCM Token: $token") // Copy this for the next step!
+    }
 //    Helper to trigger the watch
     fun triggerWatch(account: GoogleSignInAccount) {
         scope.launch {
@@ -108,7 +114,8 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             try {
                 val service = getGmailService(context, email)
                 // Use your specific project/topic path
-                startGmailWatch(service, "projects/com.package.linkedinagent/topics/gmail-notifications")
+
+                startGmailWatch(service, "projects/linkedinagent-485019/topics/gmail_notification")
                 println("Gmail Watch successfully started for $email")
             } catch (e: Exception) {
                 println("Error starting watch: ${e.message}")
@@ -153,6 +160,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
                 }
                 println("Email saved to prefs during auto-signin")
             }
+            triggerWatch(lastAccount)
         }
     }
 
