@@ -6,9 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 // Ensure this matches your package name exactly
-import com.example.linkedinagent.BuildConfig
 import com.example.linkedinagent.Utils.extractHtmlFromBody
-import org.json.JSONObject
 
 /**
  * The Engine responsible for the Fetch -> Classify -> State workflow
@@ -77,7 +75,6 @@ class EmailProcessor(private val gmailService: Gmail) {
 
                     val fullMessage = gmailService.users().messages().get("me", messageId).execute()
                     val body = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
-//                println("body: $body")
 
                     // Get the actual internal date from Gmail and convert to ISO 8601
                     val emailMillis = fullMessage.internalDate ?: System.currentTimeMillis()
@@ -102,6 +99,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                         "Extract only the company name from this text if found. Body: ${body.take(1000)
                         }"
                     val extractedCompany = classifyUsingAI(companyPrompt).trim()
+
                     val (pageId, officialName) = NotionUtils.findPageIdForCompany(extractedCompany)
                     println("Company: $extractedCompany, PageID: $pageId, OfficialName: $officialName")
                     when (category) {
@@ -110,6 +108,7 @@ class EmailProcessor(private val gmailService: Gmail) {
                                 val success = NotionUtils.createNotionPage(
                                     extractedCompany,
                                     "Applied",
+                                    status =category,
                                     isoDate
                                 )
                                 println("Notion: ${if (success) "Created" else "Failed to Create"} page for $extractedCompany")
@@ -117,6 +116,9 @@ class EmailProcessor(private val gmailService: Gmail) {
                             } else {
                                 // when pageId is not null
                                 // May be I have the company details in database which I have in row to apply later-"to apply"
+                                /*
+                               check if current status is to Apply & only update then
+                                */
                                 val success = NotionUtils.updateNotionStatus(pageId, "Applied")
                                 println("Notion: Updated $extractedCompany to 'Applied'\n$success")
 
@@ -125,6 +127,9 @@ class EmailProcessor(private val gmailService: Gmail) {
 
                         EmailCategory.INTERVIEW, EmailCategory.REJECTION -> {
                             if (pageId != null) {
+                                /*
+                                check if current status is Applied  then only update
+                                 */
                                 val targetStatus =
                                     if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
                                 val success = NotionUtils.updateNotionStatus(pageId, targetStatus)

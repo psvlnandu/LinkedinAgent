@@ -1,12 +1,6 @@
 package com.example.linkedinagent
 
-import android.content.Context
-import android.service.notification.NotificationListenerService
-import android.service.notification.StatusBarNotification
-import android.util.Log.e
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -117,9 +111,12 @@ object NotionUtils {
         null to null
     }
 
-    suspend fun createNotionPage(company: String,
-                                 jobTitle: String,
-                                 appliedDate: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun createNotionPage(
+        company: String,
+        jobTitle: String,
+        status: EmailCategory,
+        appliedDate: String
+    ): Boolean = withContext(Dispatchers.IO) {
         val jsonBody = """
     {
         "parent": { "database_id": "${BuildConfig.DATABASE_ID}" },
@@ -130,8 +127,11 @@ object NotionUtils {
             "Title": {
                 "rich_text": [{ "text": { "content": "$jobTitle" } }]
             },
+            "Link": {
+                "url": "https://linkedin.com/company/$company"
+            },
             "Status": {
-                "status": { "name": "Applied" }
+                "status": { "name": $status }
             },
             "Date Applied": {
                 "date": { "start": "$appliedDate" }

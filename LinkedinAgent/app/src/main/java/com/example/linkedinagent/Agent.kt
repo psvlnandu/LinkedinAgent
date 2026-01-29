@@ -1,13 +1,14 @@
 package com.example.linkedinagent
 
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime. *
+
 
 data class LinkedInContact(val name: String, val headline: String)
 
 // Global object to hold your logs
 object AgentState {
     // This list will automatically update your LazyColumn when items are added
-
+    var isAutomationEnabled by mutableStateOf(false) // Default to manual
     val careerUpdates = mutableStateListOf<CareerUpdate>()
 }
 

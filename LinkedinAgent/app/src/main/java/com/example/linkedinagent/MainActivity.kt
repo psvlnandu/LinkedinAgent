@@ -212,7 +212,8 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         LazyColumn(modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-        ) {
+        )
+        {
             val groupedUpdates = AgentState.careerUpdates.groupBy { it.category }
 
             // 1. APPLIED SECTION
