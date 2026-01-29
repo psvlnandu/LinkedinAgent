@@ -304,6 +304,7 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                             val success = when (update.category) {
                                 "APPLIED" -> {
                                     if (pageId == null) {
+                                        println("Manual Sync: No Notion page found for ${update.company}")
                                         // Create new page if it's a new application
                                         NotionUtils.createNotionPage(
                                             update.company,

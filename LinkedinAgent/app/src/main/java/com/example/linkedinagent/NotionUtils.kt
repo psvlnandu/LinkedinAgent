@@ -117,6 +117,15 @@ object NotionUtils {
         status: EmailCategory,
         appliedDate: String
     ): Boolean = withContext(Dispatchers.IO) {
+
+        // 1. Map the Enum to the exact string name used in your Notion "Status" column
+        val statusName = when(status) {
+            EmailCategory.APPLIED -> "Applied"
+            EmailCategory.INTERVIEW -> "Exam Scheduled"
+            EmailCategory.REJECTION -> "Rejected"
+            else -> "Applied"
+        }
+
         val jsonBody = """
     {
         "parent": { "database_id": "${BuildConfig.DATABASE_ID}" },
@@ -131,7 +140,7 @@ object NotionUtils {
                 "url": "https://linkedin.com/company/$company"
             },
             "Status": {
-                "status": { "name": $status }
+                "status": { "name": ${status.name} }
             },
             "Date Applied": {
                 "date": { "start": "$appliedDate" }
@@ -149,7 +158,18 @@ object NotionUtils {
             .build()
 
         return@withContext try {
-            client.newCall(request).execute().use { it.isSuccessful }
+            println("Creating Notion page for $company")
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    // Log the full response body to see exactly which field failed
+                    val errorBody = response.body?.string()
+                    println("Notion Error: ${response.code} - $errorBody")
+                    false
+                } else {
+                    println("Successfully created Notion page for $company")
+                    true
+                }
+            }
         } catch (e: Exception) {
             e.printStackTrace()
             false
