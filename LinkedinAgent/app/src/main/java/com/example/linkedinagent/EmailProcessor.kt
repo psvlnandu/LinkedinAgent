@@ -26,12 +26,32 @@ class EmailProcessor(private val gmailService: Gmail) {
     )
 
     suspend fun processMessage(messageId: String) = withContext(Dispatchers.IO) {
+
+        // USE THE GLOBAL ONE INSTEAD
+        if (AgentDependencies.processedIds.contains(messageId)) {
+            println("Skipping already processed message: $messageId")
+            return@withContext
+        }
+        AgentDependencies.processedIds.add(messageId)
+
+        // Keep the memory lean
+        if (AgentDependencies.processedIds.size > 100) {
+            AgentDependencies.processedIds.remove(AgentDependencies.processedIds.first())
+        }
+
         try {
             // 1. Fetch Metadata (Optimization: Only get Subject and From)
             val metadata = gmailService.users().messages().get("me", messageId)
                 .setFormat("metadata")
                 .setMetadataHeaders(listOf("Subject", "From"))
                 .execute()
+
+            val internalDate = metadata.internalDate ?: 0L
+            val oneHourAgo = System.currentTimeMillis() - 3600000
+            if (internalDate < oneHourAgo) {
+                println("Skipping old email from history sync: $messageId")
+                return@withContext
+            }
 
             val subject = metadata.payload.headers.find { it.name == "Subject" }?.value ?: ""
             val sender = metadata.payload.headers.find { it.name == "From" }?.value ?: ""

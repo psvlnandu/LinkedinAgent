@@ -21,9 +21,10 @@ class MyFcmService : FirebaseMessagingService() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
-    // Wake up call: When your Paperboy (Backend) rings the doorbell (FCM), he hands over a historyId.
+
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         val historyId = remoteMessage.data["historyId"]
+        println("FCM Received historyId: $historyId") // Add this to verify the doorbell is ringing
 
         scope.launch {
             val context = applicationContext
@@ -33,21 +34,18 @@ class MyFcmService : FirebaseMessagingService() {
             if (accountEmail != null && historyId != null) {
                 try {
                     val gmailService = getGmailService(context, accountEmail)
+                    val processor = EmailProcessor(gmailService) // Create ONCE per sync
 
-                    // 1. Get the list of changes since the last historyId
                     val historyResponse = gmailService.users().history().list("me")
                         .setStartHistoryId(historyId.toBigInteger()).execute()
 
-                    // 2. Extract the new message IDs
-                    val messageIds =
-                        historyResponse.history?.flatMap { it.messagesAdded ?: emptyList() }
-                            ?.mapNotNull { it.message.id } // mapNotNull is safer
-                            ?.distinct()
+                    val messageIds = historyResponse.history?.flatMap { it.messagesAdded ?: emptyList() }
+                        ?.mapNotNull { it.message.id }
+                        ?.distinct()
 
-                    // 3. Process each unique new message
+                    if (messageIds.isNullOrEmpty()) println("No new messages found in this history sync.")
+
                     messageIds?.forEach { mId ->
-                        println("Gmail FCM Trigger: $mId")
-                        val processor = EmailProcessor(gmailService)
                         processor.processMessage(mId)
                     }
 
@@ -57,9 +55,14 @@ class MyFcmService : FirebaseMessagingService() {
             }
         }
     }
-
     override fun onDestroy() {
         super.onDestroy()
         job.cancel()
     }
+}
+
+// In a separate file or as a companion object
+object AgentDependencies {
+    val processedIds = mutableSetOf<String>()
+    // Share one instance so it remembers what it has seen
 }
