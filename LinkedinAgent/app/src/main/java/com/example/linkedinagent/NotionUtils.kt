@@ -114,7 +114,7 @@ object NotionUtils {
     suspend fun createNotionPage(
         company: String,
         jobTitle: String,
-        status: String,
+        status: EmailCategory,
         appliedDate: String
     ): Boolean = withContext(Dispatchers.IO) {
         val jsonBody = """

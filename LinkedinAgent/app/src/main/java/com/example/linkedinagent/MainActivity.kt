@@ -4,13 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
-import android.provider.SyncStateContract.Helpers.update
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.launch
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,10 +24,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -37,8 +33,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -56,7 +50,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -308,10 +301,45 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                     }
 
                     // SYNC: Manual push to Notion
+                    // In MainActivity / ExpandableCategorySection
                     IconButton(onClick = {
                         scope.launch(Dispatchers.IO) {
-                            val success = NotionUtils.createNotionPage(update.company, "Applied", update.isoDate, appliedDate = update.isoDate)
-                            if (success) AgentState.removeUpdate(update.messageId)
+                            // 1. Check if the company already exists in Notion
+                            val (pageId, _) = NotionUtils.findPageIdForCompany(update.company)
+
+                            val success = when (update.category) {
+                                "APPLIED" -> {
+                                    if (pageId == null) {
+                                        // Create new page if it's a new application
+                                        NotionUtils.createNotionPage(
+                                            update.company,
+                                            "Applied",
+                                            status = EmailCategory.APPLIED,
+                                            update.isoDate
+                                        )
+                                    } else {
+                                        // Update existing page to 'Applied'
+                                        NotionUtils.updateNotionStatus(pageId, "Applied")
+                                    }
+                                }
+                                "INTERVIEW", "REJECTION" -> {
+                                    if (pageId != null) {
+                                        val targetStatus = if (update.category == "INTERVIEW") "Exam Scheduled" else "Rejected"
+                                        NotionUtils.updateNotionStatus(pageId, targetStatus)
+                                    } else {
+                                        println("Manual Sync: No Notion page found for ${update.company}")
+                                        false // Fail because we can't update a non-existent page
+                                    }
+                                }
+                                else -> false
+                            }
+
+                            // 2. If successful, remove from Firebase/App List
+                            if (success) {
+                                withContext(Dispatchers.Main) {
+                                    AgentState.removeUpdate(update.messageId)
+                                }
+                            }
                         }
                     }) {
                         Icon(Icons.Default.ArrowForward, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))

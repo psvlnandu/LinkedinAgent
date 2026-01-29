@@ -156,24 +156,14 @@ class EmailProcessor(private val gmailService: Gmail) {
                             else -> { /* Do nothing for OTHER */
                             }
                         }
-                    } else {
+                    }
+                    else {
                         // JUST LOG IT FOR MANUAL REVIEW
                         println("Automation Disabled: Added $extractedCompany to app list for manual review.")
                     }
 
-                    // 6. Update State for Compose
-                    withContext(Dispatchers.Main) {
-                        AgentState.careerUpdates.add(0, CareerUpdate(
-                            company = extractedCompany,
-                            subject = subject,
-                            category = category,
-                            timestamp = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(
-                                Date()
-                            ),
-                            isoDate = isoDate,
-                            bodySnippet = body.take(500)
-                        ))
-                    }
+
+
 
 
                 }
@@ -215,22 +205,6 @@ class EmailProcessor(private val gmailService: Gmail) {
 
                         if (pageId != null) {
                             NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
-                            withContext(Dispatchers.Main) {
-                                AgentState.careerUpdates.add(
-                                    0, CareerUpdate(
-                                        company = companyName,
-                                        subject = sender,
-                                        category = EmailCategory.LINKEDIN_ACCEPTED,
-                                        personName = personName,
-                                        timestamp = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(
-                                            Date()
-                                        ),
-                                        isoDate = "isoDate",
-                                        bodySnippet = bodyHtml.take(500)
-                                    )
-                                )
-                            }
-
 
                         }
                     }
