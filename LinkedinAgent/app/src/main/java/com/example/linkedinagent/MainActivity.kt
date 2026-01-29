@@ -227,13 +227,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             item { ExpandableCategorySection("LinkedIn", groupedUpdates["LINKEDIN_ACCEPTED"] ?: emptyList(), Color(0xFFFFC107)) }
         }
 
-        // Permission Footer
-        Button(
-            onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-            colors = ButtonDefaults.buttonColors(containerColor = if (hasAccess) Color(0xFF4CAF50) else Color(0xFFFF9800))
-        ) {
-            Text(if (hasAccess) "Agent Active" else "Grant Access")
-        }
+
 
 
 
