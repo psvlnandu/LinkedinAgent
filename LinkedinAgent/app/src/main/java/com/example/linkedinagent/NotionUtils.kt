@@ -137,10 +137,10 @@ object NotionUtils {
                 "rich_text": [{ "text": { "content": "$jobTitle" } }]
             },
             "Link": {
-                "url": "https://linkedin.com/company/$company"
+                "url": "https://brightvisiontechnologies.applytojob.com/apply/"
             },
             "Status": {
-                "status": { "name": ${status.name} }
+                "status": { "name": "$statusName" }
             },
             "Date Applied": {
                 "date": { "start": "$appliedDate" }
