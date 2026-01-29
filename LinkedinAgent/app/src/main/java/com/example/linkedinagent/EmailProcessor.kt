@@ -7,6 +7,10 @@ import kotlinx.coroutines.withContext
 
 // Ensure this matches your package name exactly
 import com.example.linkedinagent.Utils.extractHtmlFromBody
+import com.google.firebase.Firebase
+import com.google.firebase.database.database
+import java.util.Date
+import java.util.Locale
 
 /**
  * The Engine responsible for the Fetch -> Classify -> State workflow
@@ -60,8 +64,7 @@ class EmailProcessor(private val gmailService: Gmail) {
 
             if (isLinkedInAcceptance) {
                 processLinkedInAcceptance(sender, messageId)
-            }
-            else {
+            } else {
                 // for the other category- APPLIED, REJECTED , INTERVIEW
 
 
@@ -96,66 +99,80 @@ class EmailProcessor(private val gmailService: Gmail) {
                         else -> EmailCategory.OTHER
                     }
                     val companyPrompt =
-                        "Extract only the company name from this text if found. Body: ${body.take(1000)
+                        "Extract only the company name from this text if found. Body: ${
+                            body.take(1000)
                         }"
                     val extractedCompany = classifyUsingAI(companyPrompt).trim()
+                    val updateData = CareerUpdate(
+                        messageId = messageId,
+                        company = extractedCompany,
+                        subject = subject,
+                        category = category.name,
+                        isoDate = isoDate,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    Firebase.database.reference.child("career_updates").child(messageId).setValue(updateData)
+
 
                     val (pageId, officialName) = NotionUtils.findPageIdForCompany(extractedCompany)
                     println("Company: $extractedCompany, PageID: $pageId, OfficialName: $officialName")
-                    when (category) {
-                        EmailCategory.APPLIED -> {
-                            if (pageId == null) {
-                                val success = NotionUtils.createNotionPage(
-                                    extractedCompany,
-                                    "Applied",
-                                    status =category,
-                                    isoDate
-                                )
-                                println("Notion: ${if (success) "Created" else "Failed to Create"} page for $extractedCompany")
+                    if (AgentState.isAutomationEnabled) {
+                        when (category) {
+                            EmailCategory.APPLIED -> {
+                                if (pageId == null) {
+                                    val success = NotionUtils.createNotionPage(
+                                        extractedCompany,
+                                        "Applied",
+                                        status = category,
+                                        isoDate
+                                    )
+                                    println("Notion: ${if (success) "Created" else "Failed to Create"} page for $extractedCompany")
 
-                            } else {
-                                // when pageId is not null
-                                // May be I have the company details in database which I have in row to apply later-"to apply"
-                                /*
-                               check if current status is to Apply & only update then
-                                */
-                                val success = NotionUtils.updateNotionStatus(pageId, "Applied")
-                                println("Notion: Updated $extractedCompany to 'Applied'\n$success")
+                                } else {
+                                    // when pageId is not null
+                                    // May be I have the company details in database which I have in row to apply later-"to apply"
+                                    /*
+                                   check if current status is to Apply & only update then
+                                    */
+                                    val success = NotionUtils.updateNotionStatus(pageId, "Applied")
+                                    println("Notion: Updated $extractedCompany to 'Applied'\n$success")
 
+                                }
+                            }
+
+                            EmailCategory.INTERVIEW, EmailCategory.REJECTION -> {
+                                if (pageId != null) {
+                                    /*
+                                    check if current status is Applied  then only update
+                                     */
+                                    val targetStatus = if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
+                                    val success =NotionUtils.updateNotionStatus(pageId, targetStatus)
+                                    println("Notion: Updated $extractedCompany to $targetStatus\n$success")
+                                } else {
+                                    println("Notion: No page found for $extractedCompany")
+                                }
+                            }
+
+                            else -> { /* Do nothing for OTHER */
                             }
                         }
-
-                        EmailCategory.INTERVIEW, EmailCategory.REJECTION -> {
-                            if (pageId != null) {
-                                /*
-                                check if current status is Applied  then only update
-                                 */
-                                val targetStatus =
-                                    if (category == EmailCategory.INTERVIEW) "Exam Scheduled" else "Rejected"
-                                val success = NotionUtils.updateNotionStatus(pageId, targetStatus)
-                                println("Notion: Updated $extractedCompany to $targetStatus\n$success")
-                            } else {
-                                println("Notion: No page found for $extractedCompany")
-                            }
-                        }
-
-                        else -> { /* Do nothing for OTHER */
-                        }
+                    } else {
+                        // JUST LOG IT FOR MANUAL REVIEW
+                        println("Automation Disabled: Added $extractedCompany to app list for manual review.")
                     }
 
                     // 6. Update State for Compose
                     withContext(Dispatchers.Main) {
-                        AgentState.careerUpdates.add(
-                            0, CareerUpdate(
-                                company = extractedCompany,
-                                subject = subject,
-                                category = category,
-                                timestamp = java.text.SimpleDateFormat(
-                                    "HH:mm",
-                                    java.util.Locale.getDefault()
-                                ).format(java.util.Date())
-                            )
-                        )
+                        AgentState.careerUpdates.add(0, CareerUpdate(
+                            company = extractedCompany,
+                            subject = subject,
+                            category = category,
+                            timestamp = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(
+                                Date()
+                            ),
+                            isoDate = isoDate,
+                            bodySnippet = body.take(500)
+                        ))
                     }
 
 
@@ -205,10 +222,11 @@ class EmailProcessor(private val gmailService: Gmail) {
                                         subject = sender,
                                         category = EmailCategory.LINKEDIN_ACCEPTED,
                                         personName = personName,
-                                        timestamp = java.text.SimpleDateFormat(
-                                            "HH:mm",
-                                            java.util.Locale.getDefault()
-                                        ).format(java.util.Date())
+                                        timestamp = java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(
+                                            Date()
+                                        ),
+                                        isoDate = "isoDate",
+                                        bodySnippet = bodyHtml.take(500)
                                     )
                                 )
                             }

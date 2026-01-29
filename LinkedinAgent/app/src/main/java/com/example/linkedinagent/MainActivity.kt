@@ -29,16 +29,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -81,6 +85,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        AgentState.startObserving()
         setContent {
             LinkedinAgentTheme {
                 PermissionScreen()
@@ -114,7 +119,6 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             try {
                 val service = getGmailService(context, email)
                 // Use your specific project/topic path
-
                 startGmailWatch(service, "projects/linkedinagent-485019/topics/gmail_notification")
                 println("Gmail Watch successfully started for $email")
             } catch (e: Exception) {
@@ -130,15 +134,12 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         try {
             val account = task.getResult(ApiException::class.java)
             signedInAccount = account
-
             // Save to Prefs
             context.getSharedPreferences("prefs", Context.MODE_PRIVATE).edit {
                 putString("user_email", account.email)
             }
-
             // TRIGGER WATCH HERE (Manual Sign-in)
             triggerWatch(account)
-
         } catch (e: ApiException) {
             println("Signin failed ; $e")
         }
@@ -150,16 +151,14 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             // User was previously signed in!
             signedInAccount = lastAccount
             println("Auto-signed in as: ${lastAccount.email}")
-
-            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-
-            // If the email is missing from storage (e.g. first time after login), save it
-            if (prefs.getString("user_email", null) == null && lastAccount.email != null) {
-                prefs.edit {
-                    putString("user_email", lastAccount.email)
-                }
-                println("Email saved to prefs during auto-signin")
-            }
+//            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+//            // If the email is missing from storage (e.g. first time after login), save it
+//            if (prefs.getString("user_email", null) == null && lastAccount.email != null) {
+//                prefs.edit {
+//                    putString("user_email", lastAccount.email)
+//                }
+//                println("Email saved to prefs during auto-signin")
+//            }
             triggerWatch(lastAccount)
         }
     }
@@ -191,66 +190,58 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         verticalArrangement = Arrangement.Top
     ) {
 
+        // Sign-In Section
         if (signedInAccount == null) {
-            Button(onClick = { launchGoogleSignIn() }) {
-                Text("Sign in with Google")
-            }
+            Button(onClick = {
+                val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                    .requestEmail()
+                    .requestScopes(Scope("https://www.googleapis.com/auth/gmail.readonly"))
+                    .build()
+                launcher.launch(GoogleSignIn.getClient(context, gso).signInIntent)
+            }) { Text("Sign in with Google") }
         } else {
-            Text("Signed in as: ${signedInAccount?.email}")
-            // Optional: Add a Sign Out button
+            Text("Logged in: ${signedInAccount?.email}", fontSize = 14.sp)
             Button(onClick = {
                 GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
                 signedInAccount = null
-            }) {
-                Text("Sign Out")
+            }) { Text("Sign Out") }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        // Live Feed Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Agent Live Feed", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Auto-Sync", fontSize = 12.sp)
+                Switch(
+                    checked = AgentState.isAutomationEnabled,
+                    onCheckedChange = { AgentState.isAutomationEnabled = it }
+                )
             }
         }
-        Text("Processed LinkedIn Emails:", fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
 
-        // This list updates automatically when the Service finds an email!
-        LazyColumn(modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        )
-        {
+
+        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
             val groupedUpdates = AgentState.careerUpdates.groupBy { it.category }
 
-            // 1. APPLIED SECTION
-            item {
-                ExpandableCategorySection(
-                    title = "Applied",
-                    updates = groupedUpdates[EmailCategory.APPLIED] ?: emptyList(),
-                    color = Color.Gray
-                )
-            }
-            // 2. INTERVIEW SECTION
-            item {
-                ExpandableCategorySection(
-                    title = "Interview/Exam",
-                    updates = groupedUpdates[EmailCategory.INTERVIEW] ?: emptyList(),
-                    color = Color(0xFF2196F3) // Blue
-                )
-            }
-            // 3. REJECTION SECTION
-            item {
-                ExpandableCategorySection(
-                    title = "Rejections",
-                    updates = groupedUpdates[EmailCategory.REJECTION] ?: emptyList(),
-                    color = Color(0xFFF44336) // Red
-                )
-            }
-            // 4. LINKEDIN SECTION
-            item {
-
-                ExpandableCategorySection(
-                    title = "LinkedIn Accepted",
-                    updates = groupedUpdates[EmailCategory.LINKEDIN_ACCEPTED]?: emptyList(),
-                    color = Color(0xFFFFC107) // Yellow
-                )
-            }
-
+            item { ExpandableCategorySection("Applied", groupedUpdates["APPLIED"] ?: emptyList(), Color.Gray) }
+            item { ExpandableCategorySection("Interview/Exam", groupedUpdates["INTERVIEW"] ?: emptyList(), Color(0xFF2196F3)) }
+            item { ExpandableCategorySection("Rejections", groupedUpdates["REJECTION"] ?: emptyList(), Color(0xFFF44336)) }
+            item { ExpandableCategorySection("LinkedIn", groupedUpdates["LINKEDIN_ACCEPTED"] ?: emptyList(), Color(0xFFFFC107)) }
         }
+
+        // Permission Footer
+        Button(
+            onClick = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+            colors = ButtonDefaults.buttonColors(containerColor = if (hasAccess) Color(0xFF4CAF50) else Color(0xFFFF9800))
+        ) {
+            Text(if (hasAccess) "Agent Active" else "Grant Access")
+        }
+
 
 
         Text(text = if (hasAccess) "Agent is Active" else "Access Required")
@@ -287,54 +278,48 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
     }
 
 @Composable
-fun ExpandableCategorySection(
-    title: String,
-    updates: List<CareerUpdate>,
-    color: Color
-) {
+fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color: Color) {
     var isExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-                .padding(vertical = 12.dp, horizontal = 8.dp),
+            modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded }.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = title,
-                modifier = Modifier.weight(1f),
-                fontWeight = FontWeight.Bold
-            )
+            Text(text = title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text(text = "[${updates.size}]", fontSize = 12.sp, color = Color.Gray)
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = null,
-                tint = Color.Gray
-            )
+            Icon(imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null)
         }
 
         if (isExpanded) {
             updates.forEach { update ->
-                val displayText = when (update.category) {
-                    EmailCategory.APPLIED -> "${update.company} Applied"
-                    EmailCategory.REJECTION -> "${update.company} Rejected"
-                    EmailCategory.INTERVIEW -> "${update.company} Scheduled"
-                    EmailCategory.LINKEDIN_ACCEPTED-> update.personName?.let { "$it from ${update.company} accepted" } ?: update.subject
-                    else -> ""
-                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = "• ${update.company}", fontSize = 13.sp, modifier = Modifier.weight(1f))
 
-                Text(
-                    text = "• $displayText",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(start = 32.dp, bottom = 8.dp)
-                )
+                    // TRASH: Removes from Firebase immediately
+                    IconButton(onClick = { AgentState.removeUpdate(update.messageId) }) {
+                        Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                    }
+
+                    // SYNC: Manual push to Notion
+                    IconButton(onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            val success = NotionUtils.createNotionPage(update.company, "Applied", update.isoDate, appliedDate = update.isoDate)
+                            if (success) AgentState.removeUpdate(update.messageId)
+                        }
+                    }) {
+                        Icon(Icons.Default.ArrowForward, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+                    }
+                }
             }
         }
-        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.5f))
+        HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.4f))
     }
 }
 @Composable

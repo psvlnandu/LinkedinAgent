@@ -16,12 +16,14 @@ playServicesAuth = "21.1.1"
 googleApiClient = "1.33.0"
 googleApiServicesGmail = "v1-rev20231023-2.0.0"
 generativeai = "0.9.0"
-firebaseMessagingKtx = "24.1.2"
+
+
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+google-firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
 google-firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+google-firebase-database = { group = "com.google.firebase", name = "firebase-database" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -44,8 +46,8 @@ google-api-client-android = { group = "com.google.api-client", name = "google-ap
 google-api-client-gson = { group = "com.google.api-client", name = "google-api-client-gson", version.ref = "googleApiClient" }
 google-api-services-gmail = { group = "com.google.apis", name = "google-api-services-gmail", version.ref = "googleApiServicesGmail" }
 generativeai = { group = "com.google.ai.client.generativeai", name = "generativeai", version.ref = "generativeai" }
-firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx", version.ref = "firebaseMessagingKtx" }
-
+firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx"}
+firebase-database-ktx = { group = "com.google.firebase", name = "firebase-database-ktx" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

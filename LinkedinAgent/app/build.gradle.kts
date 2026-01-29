@@ -85,6 +85,10 @@ dependencies {
     implementation(libs.okhttp)
 
      implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
-    implementation(libs.firebase.analytics)
+    implementation(libs.google.firebase.analytics)
      implementation(libs.google.firebase.messaging)
+    implementation(libs.google.firebase.database)
+    implementation(libs.firebase.database.ktx)
+
+
 }
