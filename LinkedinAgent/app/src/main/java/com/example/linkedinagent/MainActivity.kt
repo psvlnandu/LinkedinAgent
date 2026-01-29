@@ -144,14 +144,14 @@ fun PermissionScreen(context: Context = LocalContext.current) {
             // User was previously signed in!
             signedInAccount = lastAccount
             println("Auto-signed in as: ${lastAccount.email}")
-//            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-//            // If the email is missing from storage (e.g. first time after login), save it
-//            if (prefs.getString("user_email", null) == null && lastAccount.email != null) {
-//                prefs.edit {
-//                    putString("user_email", lastAccount.email)
-//                }
-//                println("Email saved to prefs during auto-signin")
-//            }
+            val prefs = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            // If the email is missing from storage (e.g. first time after login), save it
+            if (prefs.getString("user_email", null) == null && lastAccount.email != null) {
+                prefs.edit {
+                    putString("user_email", lastAccount.email)
+                }
+                println("Email saved to prefs during auto-signin")
+            }
             triggerWatch(lastAccount)
         }
     }

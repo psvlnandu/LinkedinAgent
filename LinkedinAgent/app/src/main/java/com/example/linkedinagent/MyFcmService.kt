@@ -39,14 +39,19 @@ class MyFcmService : FirebaseMessagingService() {
                     val historyResponse = gmailService.users().history().list("me")
                         .setStartHistoryId(historyId.toBigInteger()).execute()
 
-                    val messageIds = historyResponse.history?.flatMap { it.messagesAdded ?: emptyList() }
-                        ?.mapNotNull { it.message.id }
-                        ?.distinct()
+                    // EXTRACT EVERYTHING: Added, Modified, or just present in the history record
+                    val messageIds = historyResponse.history?.flatMap { h ->
+                        val added = h.messagesAdded?.map { it.message.id } ?: emptyList()
+                        val general = h.messages?.map { it.id } ?: emptyList()
+                        added + general
+                    }?.filterNotNull()?.distinct()
 
-                    if (messageIds.isNullOrEmpty()) println("No new messages found in this history sync.")
-
-                    messageIds?.forEach { mId ->
-                        processor.processMessage(mId)
+                    if (messageIds.isNullOrEmpty()) {
+                        // EMERGENCY FALLBACK: If history list is empty, just fetch the very latest message
+                        val lastMsg = gmailService.users().messages().list("me").setMaxResults(1L).execute()
+                        lastMsg.messages?.firstOrNull()?.id?.let { processor.processMessage(it) }
+                    } else {
+                        messageIds.forEach { processor.processMessage(it) }
                     }
 
                 } catch (e: Exception) {
