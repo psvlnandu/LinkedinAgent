@@ -201,7 +201,9 @@
         suspend fun processLinkedInAcceptance(sender: String, messageId: String) =
             withContext(Dispatchers.IO) {
                 try {
-                    // 1. Fetch the actual email content directly using the messageId
+
+
+                        // 1. Fetch the actual email content directly using the messageId
                     val fullMessage = gmailService.users().messages().get("me", messageId).execute()
                     val bodyHtml = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
 
@@ -231,7 +233,7 @@
                                 val updateData = CareerUpdate(
                                     messageId = messageId,
                                     company = companyName,
-                                    category = "LINKEDIN_ACCEPTED",
+                                    category = EmailCategory.LINKEDIN_ACCEPTED.toString(),
                                     personName = personName
                                 )
                                 Firebase.database.reference.child("career_updates").child(messageId).setValue(updateData)
