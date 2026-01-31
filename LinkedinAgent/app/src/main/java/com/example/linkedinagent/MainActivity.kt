@@ -302,9 +302,9 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                         // CALLING THE timeFormatter HERE
                         Text(
                             text = timeFormatter.format(java.util.Date(update.timestamp)),
-                            fontSize = 10.sp,
                             color = Color.Gray
                         )
+                        Text(text= update.isoDate,color=Color.Gray)
                     }
                     // TRASH: Removes from Firebase immediately
                     IconButton(onClick = { AgentState.removeUpdate(update.messageId) }) {
