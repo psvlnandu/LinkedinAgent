@@ -145,7 +145,7 @@
                                     if (pageId == null) {
                                         val success = NotionUtils.createNotionPage(
                                             extractedCompany,
-                                            "Applied",
+                                            jobTitle = extractedJobTitle,
                                             status = category,
                                             isoDate
                                         )
@@ -173,6 +173,12 @@
                                         println("Notion: Updated $extractedCompany to $targetStatus\n$success")
                                     } else {
                                         println("Notion: No page found for $extractedCompany")
+                                        NotionUtils.createNotionPage(
+                                            extractedCompany,
+                                            extractedJobTitle,
+                                            category,
+                                            isoDate
+                                        )
                                     }
                                 }
 
