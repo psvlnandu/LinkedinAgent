@@ -66,8 +66,6 @@
                     processLinkedInAcceptance(sender, messageId)
                 } else {
                     // for the other category- APPLIED, REJECTED , INTERVIEW
-
-
                     val subjectPrompt =
                         "Read the Subject Line and return only the word 'TRUE' if it sounds like a job application, candidate update, or recruitment email. Otherwise return 'FALSE'. Subject: $subject"
                     val isJobRelated =
@@ -201,8 +199,6 @@
         suspend fun processLinkedInAcceptance(sender: String, messageId: String) =
             withContext(Dispatchers.IO) {
                 try {
-
-
                         // 1. Fetch the actual email content directly using the messageId
                     val fullMessage = gmailService.users().messages().get("me", messageId).execute()
                     val bodyHtml = extractHtmlFromBody(fullMessage) ?: fullMessage.snippet ?: ""
