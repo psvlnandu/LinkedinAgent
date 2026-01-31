@@ -190,11 +190,6 @@
                             // JUST LOG IT FOR MANUAL REVIEW
                             println("Automation Disabled: Added $extractedCompany to app list for manual review.")
                         }
-
-
-
-
-
                     }
                 }
 
