@@ -87,7 +87,7 @@
                         val extractionPrompt = """
                                 Read this email body and classify it into one word: 
                                 'REJECTION', 'INTERVIEW', 'APPLIED', or 'OTHER'. 
-                                 Body: ${body.take(1000)}
+                                 Body: ${body.take(7000)}
                             """.trimIndent()
                         val categoryResult = classifyUsingAI(extractionPrompt).uppercase()
                         println("categoryResult: $categoryResult")
@@ -98,10 +98,17 @@
                             categoryResult.contains("APPLIED") -> EmailCategory.APPLIED
                             else -> EmailCategory.OTHER
                         }
-                        val companyPrompt =
-                            "Extract only the company name from this text if found. Body: ${
-                                body.take(1000)
-                            }"
+                        val companyPrompt = """
+                        Target: Extract the EMPLOYER company name.
+                        Context: This email is categorized as $category.
+                        Subject: $subject
+                        
+                        Rules:
+                        1. Look for the company name that is offering the job or sending the status update.
+                        2. Return ONLY the name of the company. 
+                        3. If no company is found, return 'UNKNOWN'.
+                        Body Snippet: ${body.take(5000)}
+                    """.trimIndent()
                         val extractedCompany = classifyUsingAI(companyPrompt).trim()
                         val updateData = CareerUpdate(
                             messageId = messageId,
@@ -227,7 +234,7 @@
                 result
             } catch (e: Exception) {
                 e.printStackTrace()
-                "ERROR"
+                "$e for $prompt"
             }
         }
 

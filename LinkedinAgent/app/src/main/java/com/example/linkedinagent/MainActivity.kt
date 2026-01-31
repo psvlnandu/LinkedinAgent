@@ -105,7 +105,7 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         val token = task.result
         println("My FCM Token: $token") // Copy this for the next step!
     }
-//    Helper to trigger the watch
+    //    Helper to trigger the watch
     fun triggerWatch(account: GoogleSignInAccount) {
         scope.launch {
             val email = account.email ?: return@launch
@@ -203,7 +203,9 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         Spacer(modifier = Modifier.height(8.dp))
         // Live Feed Header
         Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -218,13 +220,39 @@ fun PermissionScreen(context: Context = LocalContext.current) {
         }
 
 
-        LazyColumn(modifier = Modifier.weight(1f).fillMaxWidth()) {
+        LazyColumn(modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()) {
             val groupedUpdates = AgentState.careerUpdates.groupBy { it.category }
 
-            item { ExpandableCategorySection("Applied", groupedUpdates["APPLIED"] ?: emptyList(), Color.Gray) }
-            item { ExpandableCategorySection("Interview/Exam", groupedUpdates["INTERVIEW"] ?: emptyList(), Color(0xFF2196F3)) }
-            item { ExpandableCategorySection("Rejections", groupedUpdates["REJECTION"] ?: emptyList(), Color(0xFFF44336)) }
-            item { ExpandableCategorySection("LinkedIn", groupedUpdates["LINKEDIN_ACCEPTED"] ?: emptyList(), Color(0xFFFFC107)) }
+            item {
+                ExpandableCategorySection(
+                    "Applied",
+                    groupedUpdates["APPLIED"] ?: emptyList(),
+                    Color.Gray
+                )
+            }
+            item {
+                ExpandableCategorySection(
+                    "Interview/Exam",
+                    groupedUpdates["INTERVIEW"] ?: emptyList(),
+                    Color(0xFF2196F3)
+                )
+            }
+            item {
+                ExpandableCategorySection(
+                    "Rejections",
+                    groupedUpdates["REJECTION"] ?: emptyList(),
+                    Color(0xFFF44336)
+                )
+            }
+            item {
+                ExpandableCategorySection(
+                    "LinkedIn",
+                    groupedUpdates["LINKEDIN_ACCEPTED"] ?: emptyList(),
+                    Color(0xFFFFC107)
+                )
+            }
         }
 
 
@@ -273,22 +301,34 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
         java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
     }
 
-    Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .animateContentSize()) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded }.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.size(10.dp).background(color, CircleShape))
+            Box(modifier = Modifier
+                .size(10.dp)
+                .background(color, CircleShape))
             Spacer(Modifier.width(12.dp))
             Text(text = title, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
             Text(text = "[${updates.size}]", fontSize = 12.sp, color = Color.Gray)
-            Icon(imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null)
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null
+            )
         }
 
         if (isExpanded) {
             updates.forEach { update ->
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 8.dp, bottom = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 32.dp, end = 8.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // We wrap the texts in a Column to stack them vertically
@@ -302,11 +342,16 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                             text = timeFormatter.format(java.util.Date(update.timestamp)),
                             color = Color.Gray, fontSize = 13.sp
                         )
-                        Text(text= update.isoDate,color=Color.Gray, fontSize = 13.sp)
+                        Text(text = update.isoDate, color = Color.Gray, fontSize = 13.sp)
                     }
                     // TRASH: Removes from Firebase immediately
                     IconButton(onClick = { AgentState.removeUpdate(update.messageId) }) {
-                        Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.Delete,
+                            null,
+                            tint = Color.Red.copy(alpha = 0.6f),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
 
                     // SYNC: Manual push to Notion
@@ -323,7 +368,7 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                                         // Create new page if it's a new application
                                         NotionUtils.createNotionPage(
                                             update.company,
-                                            "Applied",
+                                            "Job Title",
                                             status = EmailCategory.APPLIED,
                                             update.isoDate
                                         )
@@ -332,15 +377,24 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                                         NotionUtils.updateNotionStatus(pageId, "Applied")
                                     }
                                 }
+
                                 "INTERVIEW", "REJECTION" -> {
+                                    val targetStatus =
+                                        if (update.category == "INTERVIEW") "Exam Scheduled" else "Rejected"
+
                                     if (pageId != null) {
-                                        val targetStatus = if (update.category == "INTERVIEW") "Exam Scheduled" else "Rejected"
                                         NotionUtils.updateNotionStatus(pageId, targetStatus)
                                     } else {
                                         println("Manual Sync: No Notion page found for ${update.company}")
-                                        false // Fail because we can't update a non-existent page
+                                        NotionUtils.createNotionPage(
+                                            update.company,
+                                            "Job Title",
+                                            status = if (targetStatus == "Exam Scheduled") EmailCategory.INTERVIEW else EmailCategory.REJECTION,
+                                            update.isoDate
+                                        )
                                     }
                                 }
+
                                 else -> false
                             }
 
@@ -352,7 +406,12 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                             }
                         }
                     }) {
-                        Icon(Icons.Default.ArrowForward, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(20.dp))
+                        Icon(
+                            Icons.Default.ArrowForward,
+                            null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
@@ -360,6 +419,7 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
         HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.4f))
     }
 }
+
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     Text(
