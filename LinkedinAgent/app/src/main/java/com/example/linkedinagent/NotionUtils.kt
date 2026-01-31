@@ -54,7 +54,7 @@ object NotionUtils {
      * Returns Pair(PageID, OfficialName) if found.
      */
     suspend fun findPageIdForCompany(headline: String): Pair<String?, String?> = withContext(Dispatchers.IO) {
-        val keywords = headline.split(",", "|", "@", " at ").map { it.trim() }
+        val keywords = headline.split(",", "|", "@", " at "," ").map { it.trim() }
 
         val jsonFilter = """
             {
