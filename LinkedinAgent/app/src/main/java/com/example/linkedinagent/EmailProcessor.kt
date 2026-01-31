@@ -228,6 +228,14 @@
                             val (pageId, officialName) = NotionUtils.findPageIdForCompany(companyName)
 
                             if (pageId != null) {
+                                val updateData = CareerUpdate(
+                                    messageId = messageId,
+                                    company = companyName,
+                                    category = "LINKEDIN_ACCEPTED",
+                                    personName = personName
+                                )
+                                Firebase.database.reference.child("career_updates").child(messageId).setValue(updateData)
+
                                 NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
 
                             }
