@@ -343,16 +343,17 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                             Text(
                                 text = update.jobTitle,   fontSize = 13.sp,  fontWeight = FontWeight.Medium
                             )
+                            Text(
+                                text = timeFormatter.format(java.util.Date(update.timestamp)),
+                                color = Color.Gray, fontSize = 13.sp
+                            )
                         }else{
                             // Show the Person Name for LINKEDIN_ACCEPTED category
                             update.personName?.let { Text(it, fontSize = 13.sp,fontWeight = FontWeight.Medium) }
 
                         }
 
-                        Text(
-                            text = timeFormatter.format(java.util.Date(update.timestamp)),
-                            color = Color.Gray, fontSize = 13.sp
-                        )
+
                         Text(text = update.isoDate, color = Color.Gray, fontSize = 13.sp)
                     }
                     // TRASH: Removes from Firebase immediately
