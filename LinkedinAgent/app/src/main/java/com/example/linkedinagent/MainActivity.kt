@@ -268,6 +268,10 @@ suspend fun getGmailService(context: Context, accountEmail: String): Gmail =
 fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color: Color) {
     var isExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    // Helper to format the Long timestamp to readable time
+    val timeFormatter = remember {
+        java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+    }
 
     Column(modifier = Modifier.fillMaxWidth().animateContentSize()) {
         Row(
@@ -287,8 +291,21 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                     modifier = Modifier.fillMaxWidth().padding(start = 32.dp, end = 8.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "• ${update.company}", fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    // We wrap the texts in a Column to stack them vertically
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "• ${update.company}",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
 
+                        // CALLING THE timeFormatter HERE
+                        Text(
+                            text = timeFormatter.format(java.util.Date(update.timestamp)),
+                            fontSize = 10.sp,
+                            color = Color.Gray
+                        )
+                    }
                     // TRASH: Removes from Firebase immediately
                     IconButton(onClick = { AgentState.removeUpdate(update.messageId) }) {
                         Icon(Icons.Default.Delete, null, tint = Color.Red.copy(alpha = 0.6f), modifier = Modifier.size(20.dp))
