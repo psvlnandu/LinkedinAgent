@@ -406,6 +406,17 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                                         )
                                     }
                                 }
+                                "LINKEDIN_ACCEPTED"->{
+                                    if (pageId != null) {
+                                        // if company found- update it to linkedin chat
+                                        // how to add person name to new col?
+                                        NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+                                    } else {
+                                        println("Manual Sync: No Notion page found for ${update.company}")
+                                        false
+                                    }
+
+                                }
 
                                 else -> false
                             }

@@ -237,8 +237,13 @@
                                     personName = personName
                                 )
                                 Firebase.database.reference.child("career_updates").child(messageId).setValue(updateData)
-
-                                NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+                                if(AgentState.isAutomationEnabled) {
+                                    NotionUtils.updateNotionStatus(pageId, "Linkedin Chat")
+                                }
+                                else {
+                                    // JUST LOG IT FOR MANUAL REVIEW
+                                    println("Automation Disabled: Added $personName & $companyName to app list for manual review.")
+                                }
 
                             }
                         }
