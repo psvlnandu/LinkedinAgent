@@ -48,6 +48,7 @@ enum class EmailCategory { REJECTION, INTERVIEW, APPLIED, OTHER, LINKEDIN_ACCEPT
 data class CareerUpdate(
     val messageId: String = "",
     val company: String = "",
+    val jobTitle: String="",
     val subject: String = "",
     val category: String = "OTHER",
     val isoDate: String = "",

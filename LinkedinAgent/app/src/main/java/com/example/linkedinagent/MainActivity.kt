@@ -368,7 +368,7 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                                         // Create new page if it's a new application
                                         NotionUtils.createNotionPage(
                                             update.company,
-                                            "Job Title",
+                                            update.jobTitle,
                                             status = EmailCategory.APPLIED,
                                             update.isoDate
                                         )
@@ -388,7 +388,7 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                                         println("Manual Sync: No Notion page found for ${update.company}")
                                         NotionUtils.createNotionPage(
                                             update.company,
-                                            "Job Title",
+                                            update.jobTitle,
                                             status = if (targetStatus == "Exam Scheduled") EmailCategory.INTERVIEW else EmailCategory.REJECTION,
                                             update.isoDate
                                         )

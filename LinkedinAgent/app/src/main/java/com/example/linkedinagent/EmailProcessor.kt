@@ -110,9 +110,25 @@
                         Body Snippet: ${body.take(5000)}
                     """.trimIndent()
                         val extractedCompany = classifyUsingAI(companyPrompt).trim()
+
+                        val jobTitlePrompt ="""
+                            Target: Extract the JOB TITLE.
+                            Context: This email is categorized as $category.
+                            Subject: $subject
+                            
+                            Rules:
+                            1. Look for Job or Internship Title
+                            2. Return ONLY the title of the position
+                            3. If no title found, return 'UNKNOWN'.
+                            Body Snippet: ${body.take(5000)}
+
+                        """.trimIndent()
+                        val extractedJobTitle = classifyUsingAI(jobTitlePrompt).trim()
+
                         val updateData = CareerUpdate(
                             messageId = messageId,
                             company = extractedCompany,
+                            jobTitle=extractedJobTitle,
                             subject = subject,
                             category = category.name,
                             isoDate = isoDate,
