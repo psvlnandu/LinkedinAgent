@@ -298,8 +298,6 @@ fun ExpandableCategorySection(title: String, updates: List<CareerUpdate>, color:
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium
                         )
-
-                        // CALLING THE timeFormatter HERE
                         Text(
                             text = timeFormatter.format(java.util.Date(update.timestamp)),
                             color = Color.Gray
